@@ -1,4 +1,6 @@
 const Pathway = require('../models/pathway.model');
+const moduleController = require('./module.controller');
+const mongoose = require('mongoose');
 
 // Get all pathways
 exports.getAllPathways = async (req, res) => {
@@ -107,6 +109,9 @@ exports.updatePathway = async (req, res) => {
 
 // Delete a pathway (owner only)
 exports.deletePathway = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
         const pathwayId = req.params.id;
 
@@ -122,12 +127,24 @@ exports.deletePathway = async (req, res) => {
             return res.status(403).json({ message: 'Not authorized to delete this pathway' });
         }
 
-        // Delete the pathway
-        await Pathway.findByIdAndDelete(pathwayId);
+        // Delete all modules belonging to this pathway
+        const modulesDeleted = await moduleController.deleteModulesByPathway(pathwayId);
 
-        res.status(200).json({ message: 'Pathway deleted successfully' });
+        if (!modulesDeleted) {
+            throw new Error('Failed to delete related modules');
+        }
+
+        // Delete the pathway
+        await Pathway.findByIdAndDelete(pathwayId, { session });
+
+        await session.commitTransaction();
+
+        res.status(200).json({ message: 'Pathway and all its modules deleted successfully' });
     } catch (error) {
+        await session.abortTransaction();
         console.error('Error deleting pathway:', error);
         res.status(500).json({ message: 'Server error while deleting pathway' });
+    } finally {
+        session.endSession();
     }
 };

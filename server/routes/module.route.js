@@ -1,7 +1,15 @@
-const Router = require('express').Router();
+const router = require('express').Router();
+const moduleController = require('../controllers/module.controller');
+const { authenticateUser } = require('../middleware/auth.middleware');
 
-Router.get('/', (req, res) => {
-    res.send('Module route is working!');
-});
+// Public routes - accessible without authentication
+router.get('/', moduleController.getModulesByPathway);
+router.get('/:id', moduleController.getModuleById);
 
-module.exports = Router;
+// Protected routes - require authentication
+router.post('/', authenticateUser, moduleController.createModule);
+router.post('/batch', authenticateUser, moduleController.createModulesBatch);
+router.put('/:id', authenticateUser, moduleController.updateModule);
+router.delete('/:id', authenticateUser, moduleController.deleteModule);
+
+module.exports = router;

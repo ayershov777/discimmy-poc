@@ -9,7 +9,6 @@ const ModuleSchema = new mongoose.Schema({
     key: {
         type: String,
         required: true,
-        unique: true,
         trim: true,
     },
     description: {
@@ -23,8 +22,7 @@ const ModuleSchema = new mongoose.Schema({
         required: true,
     },
     prerequisites: [[{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Module',
+        type: String, // Changed to store module keys
     }]],
     concepts: [{
         type: String,
@@ -34,6 +32,10 @@ const ModuleSchema = new mongoose.Schema({
         default: '',
     },
 });
+
+// Compound indices to make key and name unique within a pathway
+ModuleSchema.index({ key: 1, pathway: 1 }, { unique: true });
+ModuleSchema.index({ name: 1, pathway: 1 }, { unique: true });
 
 const Module = mongoose.model('Module', ModuleSchema);
 
