@@ -22,8 +22,16 @@ const ModuleSchema = new mongoose.Schema({
         ref: 'Pathway',
         required: true,
     },
+    prerequisites: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Module',
+    }],
+    concepts: [{
+        type: String,
+    }],
     content: {
         type: String,
+        default: '',
     },
 });
 

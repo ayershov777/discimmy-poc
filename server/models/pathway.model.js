@@ -14,12 +14,12 @@ const pathwaySchema = new mongoose.Schema({
     },
     goal: {
         type: String,
-        required: false,
+        default: '',
         trim: true,
     },
     requirements: {
         type: String,
-        required: false,
+        default: '',
         trim: true,
     },
     owner: {
