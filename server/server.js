@@ -9,7 +9,6 @@ app.use(express.json());
 
 app.use("/api/v1/auth", require("./routes/auth.route"));
 app.use("/api/v1/users", require("./routes/user.route"));
-app.use("/api/v1/auth", require("./routes/auth.route"));
 app.use("/api/v1/pathways", require("./routes/pathway.route"));
 app.use("/api/v1/modules", require("./routes/module.route"));
 

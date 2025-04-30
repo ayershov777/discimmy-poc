@@ -1,7 +1,14 @@
-const Router = require('express').Router();
+const router = require('express').Router();
+const pathwayController = require('../controllers/pathway.controller');
+const { authenticateUser } = require('../middleware/auth.middleware');
 
-Router.get('/', (req, res) => {
-    res.send('Pathway route is working!');
-});
+// Public routes - accessible without authentication
+router.get('/', pathwayController.getAllPathways);
+router.get('/:id', pathwayController.getPathwayById);
 
-module.exports = Router;
+// Protected routes - require authentication
+router.post('/', authenticateUser, pathwayController.createPathway);
+router.put('/:id', authenticateUser, pathwayController.updatePathway);
+router.delete('/:id', authenticateUser, pathwayController.deletePathway);
+
+module.exports = router;

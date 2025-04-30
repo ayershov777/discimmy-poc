@@ -12,6 +12,16 @@ const pathwaySchema = new mongoose.Schema({
         required: true,
         trim: true,
     },
+    goal: {
+        type: String,
+        required: false,
+        trim: true,
+    },
+    requirements: {
+        type: String,
+        required: false,
+        trim: true,
+    },
     owner: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
