@@ -22,6 +22,11 @@ const pathwaySchema = new mongoose.Schema({
         default: '',
         trim: true,
     },
+    targetAudience: {
+        type: String,
+        default: '',
+        trim: true,
+    },
     owner: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',

@@ -2,10 +2,24 @@ const Pathway = require('../models/pathway.model');
 const moduleController = require('./module.controller');
 const mongoose = require('mongoose');
 
-// Get all pathways
+// Get all pathways with optional filtering by userId
 exports.getAllPathways = async (req, res) => {
     try {
-        const pathways = await Pathway.find();
+        const { userId } = req.query;
+
+        let query = {};
+
+        // If userId is provided and valid, filter pathways by owner
+        if (userId) {
+            // Validate if userId is a valid ObjectId
+            if (!mongoose.Types.ObjectId.isValid(userId)) {
+                return res.status(400).json({ message: 'Invalid user ID format' });
+            }
+
+            query.owner = userId;
+        }
+
+        const pathways = await Pathway.find(query);
         res.status(200).json(pathways);
     } catch (error) {
         console.error('Error fetching pathways:', error);
@@ -32,7 +46,7 @@ exports.getPathwayById = async (req, res) => {
 // Create a new pathway (requires authentication)
 exports.createPathway = async (req, res) => {
     try {
-        const { title, description, goal, requirements } = req.body;
+        const { title, description, goal, requirements, targetAudience } = req.body;
 
         // Validate input
         if (!title || !description) {
@@ -45,6 +59,7 @@ exports.createPathway = async (req, res) => {
             description,
             goal,
             requirements,
+            targetAudience,
             owner: req.user.id // Set from authenticated user
         });
 
@@ -69,7 +84,7 @@ exports.createPathway = async (req, res) => {
 // Update a pathway (owner only)
 exports.updatePathway = async (req, res) => {
     try {
-        const { title, description, goal, requirements } = req.body;
+        const { title, description, goal, requirements, targetAudience } = req.body;
         const pathwayId = req.params.id;
 
         // Find the pathway
@@ -87,7 +102,7 @@ exports.updatePathway = async (req, res) => {
         // Update the pathway
         const updatedPathway = await Pathway.findByIdAndUpdate(
             pathwayId,
-            { title, description, goal, requirements },
+            { title, description, goal, requirements, targetAudience },
             { new: true, runValidators: true }
         );
 
