@@ -7,11 +7,21 @@ const app = express();
 
 app.use(express.json());
 
-app.use("/users", require("./routes/user.route"));
-app.use("/auth", require("./routes/auth.route"));
-app.use("/pathways", require("./routes/pathway.route"));
-app.use("/modules", require("./routes/module.route"));
+app.use("/api/v1/auth", require("./routes/auth.route"));
+app.use("/api/v1/users", require("./routes/user.route"));
+app.use("/api/v1/auth", require("./routes/auth.route"));
+app.use("/api/v1/pathways", require("./routes/pathway.route"));
+app.use("/api/v1/modules", require("./routes/module.route"));
 
-app.listen(3000, () => {
-    console.log("Server is running on port 3000");
+app.get('/', (req, res) => {
+    res.send('API is running');
+});
+
+app.use((req, res) => {
+    res.status(404).json({ message: 'Route not found' });
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
 });

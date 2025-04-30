@@ -1,7 +1,7 @@
-const Router = require('express').Router();
+const router = require('express').Router();
+const authController = require('../controllers/auth.controller');
 
-Router.get('/', (req, res) => {
-    res.send('Auth route is working!');
-});
+router.post('/signup', authController.signup);
+router.post('/login', authController.login);
 
-module.exports = Router;
+module.exports = router;
