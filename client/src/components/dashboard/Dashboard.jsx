@@ -1,9 +1,18 @@
 import React, { useContext } from 'react';
-import { Routes, Route, Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import AuthContext from '../../context/AuthContext';
 import LearnView from './LearnView';
 import CreateView from './CreateView';
-import './Dashboard.css';
+import {
+    AppBar,
+    Box,
+    Toolbar,
+    Typography,
+    Button,
+    Container,
+    Tab,
+    Tabs
+} from '@mui/material';
 
 const Dashboard = () => {
     const { user, logout } = useContext(AuthContext);
@@ -15,52 +24,86 @@ const Dashboard = () => {
         navigate('/login');
     };
 
-    // Helper function to check if the link is active
-    const isActive = (path) => {
-        return location.pathname === path || location.pathname.startsWith(`${path}/`);
+    // Helper function to get current tab value
+    const getCurrentTabValue = () => {
+        if (location.pathname === '/dashboard/create') return 1;
+        return 0; // Default to "Learn" tab
+    };
+
+    // Handle tab change
+    const handleTabChange = (_event, newValue) => {
+        navigate(newValue === 0 ? '/dashboard/learn' : '/dashboard/create');
     };
 
     return (
-        <div className="dashboard">
-            <header className="dashboard-header">
-                <div className="logo">Learning Pathways</div>
-                <div className="user-controls">
-                    <span className="username">Hello, {user?.username || 'User'}</span>
-                    <button className="logout-button" onClick={handleLogout}>
-                        Logout
-                    </button>
-                </div>
-            </header>
-
-            <nav className="primary-nav">
-                <ul>
-                    <li>
-                        <Link
-                            to="/dashboard/learn"
-                            className={isActive('/dashboard/learn') ? 'active' : ''}
+        <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+            <AppBar position="static" sx={{ backgroundColor: 'secondary.main' }}>
+                <Toolbar>
+                    <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 'bold' }}>
+                        Learning Pathways
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Typography variant="body1">
+                            Hello, {user?.username || 'User'}
+                        </Typography>
+                        <Button
+                            color="inherit"
+                            variant="outlined"
+                            size="small"
+                            onClick={handleLogout}
+                            sx={{
+                                borderColor: 'white',
+                                '&:hover': {
+                                    backgroundColor: 'white',
+                                    color: 'secondary.main'
+                                }
+                            }}
                         >
-                            Learn
-                        </Link>
-                    </li>
-                    <li>
-                        <Link
-                            to="/dashboard/create"
-                            className={isActive('/dashboard/create') ? 'active' : ''}
-                        >
-                            Create
-                        </Link>
-                    </li>
-                </ul>
-            </nav>
+                            Logout
+                        </Button>
+                    </Box>
+                </Toolbar>
 
-            <main className="dashboard-content">
-                <Routes>
-                    <Route path="/" element={<Navigate to="/dashboard/learn" />} />
-                    <Route path="/learn/*" element={<LearnView />} />
-                    <Route path="/create/*" element={<CreateView />} />
-                </Routes>
-            </main>
-        </div>
+                <Box sx={{ backgroundColor: 'secondary.dark' }}>
+                    <Container>
+                        <Tabs
+                            value={getCurrentTabValue()}
+                            onChange={handleTabChange}
+                            textColor="inherit"
+                            indicatorColor="primary"
+                            sx={{
+                                '& .MuiTab-root': {
+                                    color: 'rgba(255,255,255,0.7)',
+                                    '&.Mui-selected': {
+                                        color: 'primary.main'
+                                    }
+                                }
+                            }}
+                        >
+                            <Tab label="Learn" />
+                            <Tab label="Create" />
+                        </Tabs>
+                    </Container>
+                </Box>
+            </AppBar>
+
+            <Box
+                component="main"
+                sx={{
+                    flexGrow: 1,
+                    p: 3,
+                    backgroundColor: 'background.default'
+                }}
+            >
+                <Container>
+                    <Routes>
+                        <Route path="/" element={<Navigate to="/dashboard/learn" />} />
+                        <Route path="/learn/*" element={<LearnView />} />
+                        <Route path="/create/*" element={<CreateView />} />
+                    </Routes>
+                </Container>
+            </Box>
+        </Box>
     );
 };
 

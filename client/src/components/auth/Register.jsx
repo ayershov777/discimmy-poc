@@ -1,7 +1,17 @@
 import React, { useState, useContext } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useNavigate, Navigate } from 'react-router-dom';
 import AuthContext from '../../context/AuthContext';
-import './Auth.css';
+import {
+    Box,
+    Container,
+    Typography,
+    TextField,
+    Button,
+    Paper,
+    Alert,
+    Link,
+    Stack
+} from '@mui/material';
 
 const Register = () => {
     const navigate = useNavigate();
@@ -19,10 +29,10 @@ const Register = () => {
 
     const { username, email, password, password2 } = formData;
 
-    const onChange = e =>
+    const onChange = (e) =>
         setFormData({ ...formData, [e.target.name]: e.target.value });
 
-    const onSubmit = async e => {
+    const onSubmit = async (e) => {
         e.preventDefault();
         setError('');
 
@@ -48,74 +58,118 @@ const Register = () => {
     }
 
     return (
-        <div className="auth-container">
-            <div className="auth-card">
-                <h1>Register</h1>
-                <p className="auth-subtitle">Create Your Account</p>
+        <Box
+            sx={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                minHeight: '100vh',
+                backgroundColor: 'background.default'
+            }}
+        >
+            <Container maxWidth="sm">
+                <Paper
+                    elevation={3}
+                    sx={{
+                        padding: 4,
+                        borderRadius: 2
+                    }}
+                >
+                    <Typography variant="h4" component="h1" align="center" gutterBottom>
+                        Register
+                    </Typography>
 
-                {error && <div className="error-message">{error}</div>}
+                    <Typography
+                        variant="subtitle1"
+                        align="center"
+                        sx={{ mb: 3 }}
+                    >
+                        Create Your Account
+                    </Typography>
 
-                <form className="auth-form" onSubmit={onSubmit}>
-                    <div className="form-group">
-                        <label htmlFor="username">Username</label>
-                        <input
-                            type="text"
-                            id="username"
-                            name="username"
-                            value={username}
-                            onChange={onChange}
-                            required
-                        />
-                    </div>
+                    {error && (
+                        <Alert
+                            severity="error"
+                            sx={{ mb: 2 }}
+                        >
+                            {error}
+                        </Alert>
+                    )}
 
-                    <div className="form-group">
-                        <label htmlFor="email">Email</label>
-                        <input
-                            type="email"
-                            id="email"
-                            name="email"
-                            value={email}
-                            onChange={onChange}
-                            required
-                        />
-                    </div>
+                    <Box component="form" onSubmit={onSubmit}>
+                        <Stack spacing={2}>
+                            <TextField
+                                label="Username"
+                                type="text"
+                                name="username"
+                                variant="outlined"
+                                fullWidth
+                                value={username}
+                                onChange={onChange}
+                                required
+                            />
 
-                    <div className="form-group">
-                        <label htmlFor="password">Password</label>
-                        <input
-                            type="password"
-                            id="password"
-                            name="password"
-                            value={password}
-                            onChange={onChange}
-                            minLength="6"
-                            required
-                        />
-                    </div>
+                            <TextField
+                                label="Email"
+                                type="email"
+                                name="email"
+                                variant="outlined"
+                                fullWidth
+                                value={email}
+                                onChange={onChange}
+                                required
+                            />
 
-                    <div className="form-group">
-                        <label htmlFor="password2">Confirm Password</label>
-                        <input
-                            type="password"
-                            id="password2"
-                            name="password2"
-                            value={password2}
-                            onChange={onChange}
-                            minLength="6"
-                            required
-                        />
-                    </div>
+                            <TextField
+                                label="Password"
+                                type="password"
+                                name="password"
+                                variant="outlined"
+                                fullWidth
+                                value={password}
+                                onChange={onChange}
+                                inputProps={{ minLength: 6 }}
+                                required
+                            />
 
-                    <button type="submit" className="auth-button" disabled={loading}>
-                        {loading ? 'Registering...' : 'Register'}
-                    </button>
-                </form>
+                            <TextField
+                                label="Confirm Password"
+                                type="password"
+                                name="password2"
+                                variant="outlined"
+                                fullWidth
+                                value={password2}
+                                onChange={onChange}
+                                inputProps={{ minLength: 6 }}
+                                required
+                            />
 
-                <p className="auth-redirect">
-                    Already have an account? <Link to="/login">Sign In</Link>
-                </p>
-            </div>
-        </div>
+                            <Button
+                                type="submit"
+                                variant="contained"
+                                color="primary"
+                                fullWidth
+                                disabled={loading}
+                                sx={{ mt: 2 }}
+                            >
+                                {loading ? 'Registering...' : 'Register'}
+                            </Button>
+                        </Stack>
+                    </Box>
+
+                    <Typography
+                        variant="body2"
+                        align="center"
+                        sx={{ mt: 3 }}
+                    >
+                        Already have an account?{' '}
+                        <Link component={RouterLink} to="/login" underline="hover">
+                            Sign In
+                        </Link>
+                    </Typography>
+                </Paper>
+            </Container>
+        </Box>
     );
 };
 
