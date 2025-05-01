@@ -39,9 +39,11 @@ import {
     ArrowBack,
     OpenInNew,
     Close,
-    Add
+    Add,
+    AutoAwesome
 } from '@mui/icons-material';
 import ReactMarkdown from 'react-markdown';
+import AIGeneration from '../../common/AIGeneration';
 
 // Helper component for Markdown content
 const MarkdownContent = ({ content }) => {
@@ -383,10 +385,30 @@ const ModuleView = () => {
                                     >
                                         Save
                                     </Button>
+                                    <AIGeneration
+                                        type="module"
+                                        id={id}
+                                        initialData={formData}
+                                        pathwayData={pathway}
+                                        availableOptions={['name', 'description', 'concepts', 'prerequisites', 'content']}
+                                        onGenerated={(newData) => {
+                                            const updatedFormData = { ...formData };
+                                            Object.keys(newData).forEach(key => {
+                                                if (key !== 'applied' && newData[key]) {
+                                                    updatedFormData[key] = newData[key];
+                                                }
+                                            });
+                                            setFormData(updatedFormData);
+                                        }}
+                                        buttonVariant="outlined"
+                                        buttonSize="medium"
+                                        buttonText="Enhance with AI"
+                                    />
                                     <Button
                                         variant="outlined"
                                         startIcon={<Preview />}
                                         onClick={toggleEditMode}
+                                        sx={{ ml: 1 }}
                                     >
                                         Preview
                                     </Button>
@@ -549,7 +571,7 @@ const ModuleView = () => {
                             options={[]}
                             value={formData.concepts}
                             onChange={handleConceptsChange}
-                            sx={{ 
+                            sx={{
                                 '& .MuiOutlinedInput-root': {
                                     flexWrap: 'wrap',
                                     minHeight: '80px',
@@ -583,7 +605,7 @@ const ModuleView = () => {
                                         label={option}
                                         {...getTagProps({ index })}
                                         key={index}
-                                        sx={{ 
+                                        sx={{
                                             m: 0.5,
                                             maxWidth: '100%',
                                             overflow: 'hidden',

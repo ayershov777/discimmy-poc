@@ -33,9 +33,12 @@ import {
     Delete,
     Save,
     AddCircle,
-    Preview
+    Preview,
+    AutoAwesome
 } from '@mui/icons-material';
 import ReactMarkdown from 'react-markdown';
+import AIGeneration from '../../common/AIGeneration';
+import PathwayStructureGenerator from '../../common/PathwayStructureGenerator';
 
 // Helper component for Markdown content
 const MarkdownContent = ({ content }) => {
@@ -261,10 +264,29 @@ const PathwayView = () => {
                                     >
                                         Save
                                     </Button>
+                                    <AIGeneration
+                                        type="pathway"
+                                        id={id}
+                                        initialData={formData}
+                                        availableOptions={['title', 'description', 'goal', 'requirements', 'targetAudience']}
+                                        onGenerated={(newData) => {
+                                            const updatedFormData = { ...formData };
+                                            Object.keys(newData).forEach(key => {
+                                                if (key !== 'applied' && newData[key]) {
+                                                    updatedFormData[key] = newData[key];
+                                                }
+                                            });
+                                            setFormData(updatedFormData);
+                                        }}
+                                        buttonVariant="outlined"
+                                        buttonSize="medium"
+                                        buttonText="Enhance with AI"
+                                    />
                                     <Button
                                         variant="outlined"
                                         startIcon={<Preview />}
                                         onClick={toggleEditMode}
+                                        sx={{ ml: 1 }}
                                     >
                                         Preview
                                     </Button>
@@ -395,15 +417,43 @@ const PathwayView = () => {
                     </Typography>
 
                     {isOwner && (
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            startIcon={<AddCircle />}
-                            component={Link}
-                            to={`/dashboard/create/module/${id}/new`}
-                        >
-                            Add Module
-                        </Button>
+                        <Box sx={{ display: 'flex', gap: 2 }}>
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                startIcon={<AddCircle />}
+                                component={Link}
+                                to={`/dashboard/create/module/${id}/new`}
+                            >
+                                Add Module
+                            </Button>
+                            <PathwayStructureGenerator
+                                pathwayId={id}
+                                pathwayData={pathway}
+                                onGenerated={(result, successMessage) => {
+                                    // If success message is provided, it means the structure was applied
+                                    if (successMessage) {
+                                        // Show success message
+                                        alert(successMessage);
+
+                                        // Refresh the modules list
+                                        const fetchModules = async () => {
+                                            try {
+                                                const modulesRes = await axios.get(`${import.meta.env.VITE_API_URL}/modules?pathwayId=${id}`);
+                                                setModules(modulesRes.data);
+                                            } catch (err) {
+                                                console.error('Error fetching updated modules:', err);
+                                            }
+                                        };
+
+                                        fetchModules();
+                                    }
+                                }}
+                                buttonVariant="outlined"
+                                buttonText="Generate Structure with AI"
+                            />
+
+                        </Box>
                     )}
                 </Box>
 

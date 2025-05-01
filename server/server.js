@@ -13,6 +13,7 @@ app.use("/api/v1/auth", require("./routes/auth.route"));
 app.use("/api/v1/users", require("./routes/user.route"));
 app.use("/api/v1/pathways", require("./routes/pathway.route"));
 app.use("/api/v1/modules", require("./routes/module.route"));
+app.use("/api/v1/ai", require("./routes/ai.route"));
 
 app.get('/', (req, res) => {
     res.send('API is running');

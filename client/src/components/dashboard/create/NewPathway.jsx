@@ -12,6 +12,8 @@ import {
     Stack,
     CircularProgress
 } from '@mui/material';
+import { AutoAwesome } from '@mui/icons-material';
+import AIGeneration from '../../common/AIGeneration';
 
 const NewPathway = () => {
     const { user, isAuthenticated } = useContext(AuthContext);
@@ -145,16 +147,33 @@ const NewPathway = () => {
                         placeholder="Who is this pathway designed for?"
                     />
 
-                    <Box sx={{ mt: 2 }}>
+                    <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
                         <Button
                             type="submit"
                             variant="contained"
                             color="primary"
                             disabled={loading}
-                            sx={{ mr: 2 }}
                         >
                             {loading ? <CircularProgress size={24} /> : 'Create Pathway'}
                         </Button>
+                        <AIGeneration
+                            type="pathway"
+                            id="new" // Not saved yet, but we'll still use the component
+                            initialData={formData}
+                            availableOptions={['title', 'description', 'goal', 'requirements', 'targetAudience']}
+                            onGenerated={(newData) => {
+                                const updatedFormData = { ...formData };
+                                Object.keys(newData).forEach(key => {
+                                    if (key !== 'applied' && newData[key]) {
+                                        updatedFormData[key] = newData[key];
+                                    }
+                                });
+                                setFormData(updatedFormData);
+                            }}
+                            buttonVariant="outlined"
+                            buttonSize="medium"
+                            buttonText="Enhance with AI"
+                        />
                         <Button
                             variant="outlined"
                             onClick={() => navigate('/dashboard/create/my-pathways')}
