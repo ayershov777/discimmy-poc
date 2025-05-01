@@ -26,7 +26,8 @@ const Dashboard = () => {
 
     // Helper function to get current tab value
     const getCurrentTabValue = () => {
-        if (location.pathname === '/dashboard/create') return 1;
+        // Check if the path starts with /dashboard/create - this will match all Create subroutes
+        if (location.pathname.startsWith('/dashboard/create')) return 1;
         return 0; // Default to "Learn" tab
     };
 

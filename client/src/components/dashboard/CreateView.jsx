@@ -1,65 +1,102 @@
-import React from 'react';
-import { Paper, Typography, Box } from '@mui/material';
-import { Create } from '@mui/icons-material';
+import React, { useState } from 'react';
+import { Routes, Route, Link, useLocation } from 'react-router-dom';
+import { Paper, Typography, Box, Grid, Drawer, List, ListItem, ListItemText, ListItemIcon, Divider } from '@mui/material';
+import { Collections, ViewList, Add } from '@mui/icons-material';
+import MyPathways from './create/MyPathways';
+import AllPathways from './create/AllPathways';
+import PathwayView from './create/PathwayView';
+import ModuleView from './create/ModuleView';
+import NewPathway from './create/NewPathway';
 
 const CreateView = () => {
+    const location = useLocation();
+    const [drawerWidth] = useState(240);
+
+    // Helper function to determine active route
+    const isActive = (path) => {
+        return location.pathname.startsWith(path);
+    };
+
     return (
-        <Paper
-            elevation={2}
-            sx={{
-                p: 3,
-                borderRadius: 2
-            }}
-        >
-            <Typography
-                variant="h5"
-                component="h1"
-                gutterBottom
+        <Box sx={{ display: 'flex' }}>
+            {/* Vertical secondary navigation */}
+            <Drawer
+                variant="permanent"
                 sx={{
-                    pb: 1.5,
-                    borderBottom: '2px solid',
-                    borderColor: 'divider'
+                    width: drawerWidth,
+                    flexShrink: 0,
+                    '& .MuiDrawer-paper': {
+                        width: drawerWidth,
+                        position: 'relative',
+                        borderRight: '1px solid',
+                        borderColor: 'divider',
+                        boxShadow: 'none'
+                    },
                 }}
+                open
             >
-                Create
-            </Typography>
+                <List>
+                    <ListItem>
+                        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>Navigation</Typography>
+                    </ListItem>
+                    <Divider />
+                    <ListItem
+                        button
+                        component={Link}
+                        to="/dashboard/create/my-pathways"
+                        selected={isActive('/dashboard/create/my-pathways')}
+                    >
+                        <ListItemIcon>
+                            <Collections />
+                        </ListItemIcon>
+                        <ListItemText primary="My Pathways" />
+                    </ListItem>
+                    <ListItem
+                        button
+                        component={Link}
+                        to="/dashboard/create/all-pathways"
+                        selected={isActive('/dashboard/create/all-pathways')}
+                    >
+                        <ListItemIcon>
+                            <ViewList />
+                        </ListItemIcon>
+                        <ListItemText primary="All Pathways" />
+                    </ListItem>
+                    <ListItem
+                        button
+                        component={Link}
+                        to="/dashboard/create/new-pathway"
+                        selected={isActive('/dashboard/create/new-pathway')}
+                    >
+                        <ListItemIcon>
+                            <Add />
+                        </ListItemIcon>
+                        <ListItemText primary="Create New Pathway" />
+                    </ListItem>
+                </List>
+            </Drawer>
 
-            <Box
-                sx={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    p: 4,
-                    textAlign: 'center',
-                    backgroundColor: 'grey.50',
-                    borderRadius: 1
-                }}
-            >
-                <Create
+            {/* Main content area */}
+            <Box component="main" sx={{ flexGrow: 1, p: 2 }}>
+                <Paper
+                    elevation={2}
                     sx={{
-                        fontSize: 60,
-                        color: 'text.secondary',
-                        mb: 2
+                        p: 3,
+                        borderRadius: 2,
+                        minHeight: '80vh'
                     }}
-                />
-
-                <Typography
-                    variant="body1"
-                    color="text.secondary"
-                    paragraph
                 >
-                    This is a placeholder for the Create view.
-                </Typography>
-
-                <Typography
-                    variant="body1"
-                    color="text.secondary"
-                >
-                    Here, users will be able to create and manage their own learning pathways and modules.
-                </Typography>
+                    <Routes>
+                        <Route path="/" element={<MyPathways />} />
+                        <Route path="/my-pathways" element={<MyPathways />} />
+                        <Route path="/all-pathways" element={<AllPathways />} />
+                        <Route path="/pathway/:id" element={<PathwayView />} />
+                        <Route path="/module/:pathwayId/:id" element={<ModuleView />} />
+                        <Route path="/new-pathway" element={<NewPathway />} />
+                    </Routes>
+                </Paper>
             </Box>
-        </Paper>
+        </Box>
     );
 };
 
