@@ -385,6 +385,15 @@ const ModuleView = () => {
                                     >
                                         Save
                                     </Button>
+                                    <Button
+                                        variant="outlined"
+                                        color="error"
+                                        startIcon={<Delete />}
+                                        onClick={() => setDeleteDialogOpen(true)}
+                                        sx={{ mr: 1 }}
+                                    >
+                                        Delete
+                                    </Button>
                                     <AIGeneration
                                         type="module"
                                         id={id}
