@@ -154,7 +154,6 @@ const ModuleView = () => {
         fetchData();
     }, [id, pathwayId, user, isNewModule]);
 
-    // Replace it with this updated version:
     const handleInputChange = (e) => {
         const { name, value } = e.target;
 
@@ -185,7 +184,8 @@ const ModuleView = () => {
                             segmentedContent = parsed.results.content;
                         }
                     } catch (parseError) {
-                        // Not JSON, treat as regular content
+                        // Not JSON, treat as regular Markdown content
+                        isSegmented = false;
                     }
                 }
 
@@ -690,13 +690,12 @@ const ModuleView = () => {
                             }
                         />
 
-                        {/* Content - HTML Editor */}
+                        {/* Content - Markdown Editor */}
                         <Box>
                             <Typography variant="subtitle1" gutterBottom>
-                                Content (HTML)
+                                Content (Markdown)
                             </Typography>
 
-                            {/* Check if content is in segmented format */}
                             {(() => {
                                 let isSegmented = false;
                                 let segmentedContent = null;
@@ -781,7 +780,7 @@ const ModuleView = () => {
                                                                 fontStyle: 'italic'
                                                             }}
                                                         >
-                                                            HTML content: {segment.content.length} characters
+                                                            Markdown content: {segment.content ? segment.content.length : 0} characters
                                                         </Typography>
                                                     </Box>
                                                 ))}
@@ -799,7 +798,7 @@ const ModuleView = () => {
                                             fullWidth
                                             multiline
                                             rows={10}
-                                            placeholder="Enter HTML content here"
+                                            placeholder="Enter Markdown content here"
                                             sx={{ fontFamily: 'monospace' }}
                                         />
                                     );
@@ -807,7 +806,7 @@ const ModuleView = () => {
                             })()}
 
                             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                                HTML editor for module content
+                                Markdown editor for module content - supports headings, lists, links, code blocks, etc.
                             </Typography>
                         </Box>
                     </Stack>
@@ -949,7 +948,7 @@ const ModuleView = () => {
                     </Box>
                 </DialogTitle>
                 <DialogContent>
-                    {/* The module.content might be a string or an object with the API response format */}
+                    {/* Use the ModuleContentRenderer component for viewing module content */}
                     <ModuleContentRenderer
                         content={module?.content}
                     />

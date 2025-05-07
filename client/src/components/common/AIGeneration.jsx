@@ -138,13 +138,13 @@ const AIGeneration = ({
             name: 'Create a concise, descriptive name for this module',
             concepts: 'Generate key concepts that should be covered',
             prerequisites: 'Suggest logical prerequisites from other modules',
-            content: 'Generate complete HTML content for the module'
+            content: 'Generate complete Markdown content for the module'
         };
 
         return descriptions[option] || '';
     };
 
-    // Replace it with this updated version that handles segmented content:
+    // Updated method to render content based on type
     const renderContent = (option, content) => {
         if (option === 'concepts' || option === 'prerequisites') {
             return (
@@ -209,33 +209,88 @@ const AIGeneration = ({
                     </Box>
                 );
             } else if (typeof content === 'string') {
-                // Handle legacy content format (string)
-                return (
-                    <Box sx={{
-                        maxHeight: '300px',
-                        overflowY: 'auto',
-                        p: 1,
-                        border: '1px solid rgba(0, 0, 0, 0.1)',
-                        borderRadius: 1
-                    }}>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                            HTML content (showing preview, truncated)
-                        </Typography>
+                // For string content, check if it's JSON or plain text
+                try {
+                    const parsedContent = JSON.parse(content);
+                    if (Array.isArray(parsedContent)) {
+                        // It's a JSON array of segments
+                        return (
+                            <Box sx={{
+                                maxHeight: '300px',
+                                overflowY: 'auto',
+                                p: 1,
+                                border: '1px solid rgba(0, 0, 0, 0.1)',
+                                borderRadius: 1
+                            }}>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                    Segmented content with {parsedContent.length} segments
+                                </Typography>
+                                <Box
+                                    sx={{
+                                        p: 1,
+                                        backgroundColor: 'rgba(0, 0, 0, 0.03)',
+                                        maxHeight: '200px',
+                                        overflowY: 'auto',
+                                        fontFamily: 'monospace',
+                                        fontSize: '0.8rem'
+                                    }}
+                                >
+                                    <ul>
+                                        {parsedContent.slice(0, 5).map((segment, index) => (
+                                            <li key={index}>
+                                                <strong>{segment.type}</strong>: {segment.title}
+                                                {segment.section && <span> (Section: {segment.section})</span>}
+                                            </li>
+                                        ))}
+                                        {parsedContent.length > 5 && (
+                                            <li>... and {parsedContent.length - 5} more segments</li>
+                                        )}
+                                    </ul>
+                                </Box>
+                            </Box>
+                        );
+                    }
+                } catch (e) {
+                    // Not JSON, treat as Markdown
+                    return (
                         <Box
                             sx={{
-                                p: 1,
+                                p: 2,
                                 backgroundColor: 'rgba(0, 0, 0, 0.03)',
-                                maxHeight: '200px',
+                                borderRadius: 1,
+                                maxHeight: '300px',
                                 overflowY: 'auto',
-                                fontFamily: 'monospace',
-                                fontSize: '0.8rem',
-                                whiteSpace: 'pre-wrap'
+                                '& a': {
+                                    color: 'primary.main',
+                                    textDecoration: 'none',
+                                    '&:hover': {
+                                        textDecoration: 'underline'
+                                    }
+                                },
+                                '& pre': {
+                                    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                                    padding: 2,
+                                    borderRadius: 1,
+                                    overflowX: 'auto',
+                                    fontFamily: 'monospace'
+                                },
+                                '& code': {
+                                    fontFamily: 'monospace',
+                                    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                                    padding: '2px 4px',
+                                    borderRadius: '3px',
+                                },
+                                '& h1, & h2, & h3, & h4, & h5, & h6': {
+                                    marginTop: '1em',
+                                    marginBottom: '0.5em',
+                                    fontWeight: 500
+                                }
                             }}
                         >
-                            {content.length > 1000 ? content.substring(0, 1000) + '...' : content}
+                            <ReactMarkdown>{content}</ReactMarkdown>
                         </Box>
-                    </Box>
-                );
+                    );
+                }
             } else {
                 // Handle other content formats
                 return (
@@ -251,6 +306,7 @@ const AIGeneration = ({
                 );
             }
         } else {
+            // For other fields (like description), render as Markdown
             return (
                 <Box
                     sx={{

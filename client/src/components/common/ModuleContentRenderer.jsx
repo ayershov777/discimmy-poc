@@ -19,6 +19,7 @@ import {
     Build,
     Code
 } from '@mui/icons-material';
+import ReactMarkdown from 'react-markdown';
 
 // Define segment types and their corresponding icons
 const segmentIcons = {
@@ -34,7 +35,6 @@ const ModuleContentRenderer = ({ content, loading = false }) => {
     const [parsedContent, setParsedContent] = useState([]);
     const [sections, setSections] = useState([]);
     const [expanded, setExpanded] = useState(false);
-    const [iframeHeight, setIframeHeight] = useState({});
 
     useEffect(() => {
         if (loading || !content) {
@@ -106,25 +106,6 @@ const ModuleContentRenderer = ({ content, loading = false }) => {
         setExpanded(isExpanded ? panel : false);
     };
 
-    // Handle iframe message (for auto-resizing iframes)
-    const handleIframeMessage = (event) => {
-        if (event.data && typeof event.data === 'object' && 'frameHeight' in event.data) {
-            const { id, frameHeight } = event.data;
-            setIframeHeight(prev => ({
-                ...prev,
-                [id]: frameHeight
-            }));
-        }
-    };
-
-    // Add event listener for messages from iframe
-    useEffect(() => {
-        window.addEventListener('message', handleIframeMessage);
-        return () => {
-            window.removeEventListener('message', handleIframeMessage);
-        };
-    }, []);
-
     // Render loading state
     if (loading) {
         return (
@@ -195,123 +176,69 @@ const ModuleContentRenderer = ({ content, loading = false }) => {
                                                 overflow: 'hidden'
                                             }}
                                         >
-                                            <iframe
-                                                title={segment.title}
-                                                id={segmentId}
-                                                srcDoc={`
-                                                    <!DOCTYPE html>
-                                                    <html>
-                                                    <head>
-                                                        <meta charset="UTF-8">
-                                                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                                                        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
-                                                        <style>
-                                                            body {
-                                                                font-family: 'Roboto', sans-serif;
-                                                                color: rgba(0, 0, 0, 0.87);
-                                                                line-height: 1.5;
-                                                                margin: 0;
-                                                                padding: 0;
-                                                            }
-                                                            a {
-                                                                color: #3498db;
-                                                                text-decoration: none;
-                                                            }
-                                                            a:hover {
-                                                                text-decoration: underline;
-                                                            }
-                                                            h1, h2, h3, h4, h5, h6 {
-                                                                margin-top: 1.5em;
-                                                                margin-bottom: 0.5em;
-                                                                font-weight: 500;
-                                                            }
-                                                            p {
-                                                                margin-bottom: 1em;
-                                                            }
-                                                            ul, ol {
-                                                                padding-left: 2em;
-                                                                margin-bottom: 1em;
-                                                            }
-                                                            code {
-                                                                font-family: monospace;
-                                                                background-color: rgba(0, 0, 0, 0.05);
-                                                                padding: 2px 4px;
-                                                                border-radius: 3px;
-                                                            }
-                                                            pre {
-                                                                background-color: rgba(0, 0, 0, 0.05);
-                                                                padding: 1em;
-                                                                border-radius: 4px;
-                                                                overflow-x: auto;
-                                                            }
-                                                            pre code {
-                                                                background-color: transparent;
-                                                                padding: 0;
-                                                            }
-                                                            img {
-                                                                max-width: 100%;
-                                                                height: auto;
-                                                            }
-                                                            table {
-                                                                border-collapse: collapse;
-                                                                width: 100%;
-                                                                margin-bottom: 1em;
-                                                            }
-                                                            th, td {
-                                                                border: 1px solid rgba(0, 0, 0, 0.12);
-                                                                padding: 8px;
-                                                                text-align: left;
-                                                            }
-                                                            th {
-                                                                background-color: rgba(0, 0, 0, 0.05);
-                                                            }
-                                                        </style>
-                                                        <script>
-                                                            // Send height to parent for iframe resizing
-                                                            function updateHeight() {
-                                                                const height = document.body.scrollHeight;
-                                                                window.parent.postMessage({
-                                                                    id: '${segmentId}',
-                                                                    frameHeight: height
-                                                                }, '*');
-                                                            }
-                                                            
-                                                            // Update on load and on resize
-                                                            window.onload = updateHeight;
-                                                            window.onresize = updateHeight;
-                                                            
-                                                            // Also set up a mutation observer to detect content changes
-                                                            const observer = new MutationObserver(updateHeight);
-                                                            observer.observe(document.documentElement, {
-                                                                childList: true,
-                                                                subtree: true
-                                                            });
-                                                            
-                                                            // Make all links open in a new tab
-                                                            document.addEventListener('click', function(e) {
-                                                                if (e.target.tagName === 'A' && e.target.getAttribute('href')) {
-                                                                    e.target.setAttribute('target', '_blank');
-                                                                    e.target.setAttribute('rel', 'noopener noreferrer');
-                                                                }
-                                                            });
-                                                        </script>
-                                                    </head>
-                                                    <body>
-                                                        <div style="overflow-y: auto;">
-                                                            ${segment.content}
-                                                        </div>
-                                                    </body>
-                                                    </html>
-                                                `}
-                                                style={{
-                                                    width: '100%',
-                                                    height: iframeHeight[segmentId] ? `${iframeHeight[segmentId]}px` : '500px',
-                                                    border: 'none',
-                                                    overflow: 'hidden'
+                                            {/* Markdown Content Renderer */}
+                                            <Box
+                                                sx={{
+                                                    p: 2,
+                                                    maxHeight: '500px',
+                                                    overflowY: 'auto',
+                                                    bgcolor: 'background.paper',
+                                                    borderRadius: 1,
+                                                    '& a': {
+                                                        color: 'primary.main',
+                                                        textDecoration: 'none',
+                                                        '&:hover': {
+                                                            textDecoration: 'underline'
+                                                        }
+                                                    },
+                                                    '& pre': {
+                                                        backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                                                        padding: 2,
+                                                        borderRadius: 1,
+                                                        overflowX: 'auto',
+                                                        fontFamily: 'monospace'
+                                                    },
+                                                    '& code': {
+                                                        fontFamily: 'monospace',
+                                                        backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                                                        padding: '2px 4px',
+                                                        borderRadius: '3px',
+                                                    },
+                                                    '& img': {
+                                                        maxWidth: '100%',
+                                                        height: 'auto'
+                                                    },
+                                                    '& table': {
+                                                        borderCollapse: 'collapse',
+                                                        width: '100%',
+                                                        marginBottom: '1em'
+                                                    },
+                                                    '& th, & td': {
+                                                        border: '1px solid rgba(0, 0, 0, 0.12)',
+                                                        padding: '8px',
+                                                        textAlign: 'left'
+                                                    },
+                                                    '& th': {
+                                                        backgroundColor: 'rgba(0, 0, 0, 0.05)'
+                                                    },
+                                                    '& h1, & h2, & h3, & h4, & h5, & h6': {
+                                                        marginTop: '1.5em',
+                                                        marginBottom: '0.5em',
+                                                        fontWeight: 500
+                                                    },
+                                                    '& p': {
+                                                        marginBottom: '1em'
+                                                    },
+                                                    '& ul, & ol': {
+                                                        paddingLeft: '2em',
+                                                        marginBottom: '1em'
+                                                    }
                                                 }}
-                                                scrolling="no"
-                                                frameBorder="0"
-                                            />
+                                            >
+                                                <ReactMarkdown>
+                                                    {segment.content}
+                                                </ReactMarkdown>
+                                            </Box>
                                         </Box>
                                     </AccordionDetails>
                                 </Accordion>
