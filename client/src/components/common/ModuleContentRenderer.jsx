@@ -1,0 +1,326 @@
+import React, { useState, useEffect } from 'react';
+import {
+    Accordion,
+    AccordionSummary,
+    AccordionDetails,
+    Typography,
+    Box,
+    Paper,
+    Divider,
+    Chip,
+    CircularProgress
+} from '@mui/material';
+import {
+    ExpandMore,
+    Article,
+    Search,
+    Assignment,
+    Group,
+    Build,
+    Code
+} from '@mui/icons-material';
+
+// Define segment types and their corresponding icons
+const segmentIcons = {
+    article: <Article color="primary" />,
+    research: <Search color="primary" />,
+    exercise: <Assignment color="primary" />,
+    session: <Group color="primary" />,
+    project: <Build color="primary" />,
+    integration: <Code color="primary" />
+};
+
+const ModuleContentRenderer = ({ content, loading = false }) => {
+    const [parsedContent, setParsedContent] = useState([]);
+    const [sections, setSections] = useState([]);
+    const [expanded, setExpanded] = useState(false);
+    const [iframeHeight, setIframeHeight] = useState({});
+
+    useEffect(() => {
+        if (loading || !content) {
+            setParsedContent([]);
+            setSections([]);
+            return;
+        }
+
+        // Helper function to extract segments from the content
+        const extractSegments = (inputContent) => {
+            console.log('Extracting segments from content type:', typeof inputContent);
+
+            // Case 1: If content is a string, try to parse it as JSON
+            if (typeof inputContent === 'string') {
+                try {
+                    const parsedJson = JSON.parse(inputContent);
+                    return extractSegments(parsedJson);
+                } catch (e) {
+                    console.error('Error parsing content as JSON:', e);
+                    return [];
+                }
+            }
+
+            // Case 2: If content is the API response object with results.content structure
+            if (typeof inputContent === 'object' && inputContent !== null) {
+                // If it has a results.content property (API response format)
+                if (inputContent.results && Array.isArray(inputContent.results.content)) {
+                    return inputContent.results.content;
+                }
+
+                // If it's already an array of segment objects
+                if (Array.isArray(inputContent)) {
+                    return inputContent;
+                }
+
+                // If it's some other object structure with content property
+                if (inputContent.content) {
+                    if (Array.isArray(inputContent.content)) {
+                        return inputContent.content;
+                    }
+                    return extractSegments(inputContent.content);
+                }
+            }
+
+            // Default case: couldn't extract segments
+            console.warn('Could not extract segments from content:', inputContent);
+            return [];
+        };
+
+        // Extract segments from content
+        const segments = extractSegments(content);
+        console.log('Extracted segments:', segments);
+
+        setParsedContent(segments);
+
+        // Extract unique sections for grouping
+        const uniqueSections = Array.from(
+            new Set(segments.map(segment => segment.section || 'Content'))
+        );
+        setSections(uniqueSections);
+
+        // Set first segment as expanded by default
+        if (segments.length > 0 && !expanded) {
+            setExpanded(`segment-0-0`);
+        }
+    }, [content, loading]);
+
+    const handleAccordionChange = (panel) => (event, isExpanded) => {
+        setExpanded(isExpanded ? panel : false);
+    };
+
+    // Handle iframe message (for auto-resizing iframes)
+    const handleIframeMessage = (event) => {
+        if (event.data && typeof event.data === 'object' && 'frameHeight' in event.data) {
+            const { id, frameHeight } = event.data;
+            setIframeHeight(prev => ({
+                ...prev,
+                [id]: frameHeight
+            }));
+        }
+    };
+
+    // Add event listener for messages from iframe
+    useEffect(() => {
+        window.addEventListener('message', handleIframeMessage);
+        return () => {
+            window.removeEventListener('message', handleIframeMessage);
+        };
+    }, []);
+
+    // Render loading state
+    if (loading) {
+        return (
+            <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px">
+                <CircularProgress />
+            </Box>
+        );
+    }
+
+    // Render content frame if no content
+    if (!content || parsedContent.length === 0) {
+        return (
+            <Paper elevation={0} sx={{ p: 3, mt: 2, borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+                <Typography variant="body1" color="text.secondary" textAlign="center">
+                    No content available
+                </Typography>
+            </Paper>
+        );
+    }
+
+    // Render content by sections
+    return (
+        <Box sx={{ mt: 2 }}>
+            {sections.map((section, sectionIndex) => (
+                <Box key={`section-${sectionIndex}`} sx={{ mb: 3 }}>
+                    {sections.length > 1 && (
+                        <Typography variant="h6" component="h2" gutterBottom>
+                            {section}
+                        </Typography>
+                    )}
+
+                    {parsedContent
+                        .filter(segment => (segment.section || 'Content') === section)
+                        .map((segment, segmentIndex) => {
+                            const segmentId = `segment-${sectionIndex}-${segmentIndex}`;
+                            return (
+                                <Accordion
+                                    key={segmentId}
+                                    expanded={expanded === segmentId}
+                                    onChange={handleAccordionChange(segmentId)}
+                                    sx={{ mb: 1 }}
+                                >
+                                    <AccordionSummary
+                                        expandIcon={<ExpandMore />}
+                                        aria-controls={`${segmentId}-content`}
+                                        id={`${segmentId}-header`}
+                                    >
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            {segmentIcons[segment.type] || <Article color="primary" />}
+                                            <Typography>{segment.title}</Typography>
+                                            <Chip
+                                                label={segment.type}
+                                                size="small"
+                                                color="primary"
+                                                variant="outlined"
+                                                sx={{ ml: 1, textTransform: 'capitalize' }}
+                                            />
+                                        </Box>
+                                    </AccordionSummary>
+                                    <AccordionDetails>
+                                        <Divider sx={{ mb: 2 }} />
+                                        <Box
+                                            sx={{
+                                                width: '100%',
+                                                height: 'auto',
+                                                border: 'none',
+                                                borderRadius: 1,
+                                                overflow: 'hidden'
+                                            }}
+                                        >
+                                            <iframe
+                                                title={segment.title}
+                                                id={segmentId}
+                                                srcDoc={`
+                                                    <!DOCTYPE html>
+                                                    <html>
+                                                    <head>
+                                                        <meta charset="UTF-8">
+                                                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                                        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
+                                                        <style>
+                                                            body {
+                                                                font-family: 'Roboto', sans-serif;
+                                                                color: rgba(0, 0, 0, 0.87);
+                                                                line-height: 1.5;
+                                                                margin: 0;
+                                                                padding: 0;
+                                                            }
+                                                            a {
+                                                                color: #3498db;
+                                                                text-decoration: none;
+                                                            }
+                                                            a:hover {
+                                                                text-decoration: underline;
+                                                            }
+                                                            h1, h2, h3, h4, h5, h6 {
+                                                                margin-top: 1.5em;
+                                                                margin-bottom: 0.5em;
+                                                                font-weight: 500;
+                                                            }
+                                                            p {
+                                                                margin-bottom: 1em;
+                                                            }
+                                                            ul, ol {
+                                                                padding-left: 2em;
+                                                                margin-bottom: 1em;
+                                                            }
+                                                            code {
+                                                                font-family: monospace;
+                                                                background-color: rgba(0, 0, 0, 0.05);
+                                                                padding: 2px 4px;
+                                                                border-radius: 3px;
+                                                            }
+                                                            pre {
+                                                                background-color: rgba(0, 0, 0, 0.05);
+                                                                padding: 1em;
+                                                                border-radius: 4px;
+                                                                overflow-x: auto;
+                                                            }
+                                                            pre code {
+                                                                background-color: transparent;
+                                                                padding: 0;
+                                                            }
+                                                            img {
+                                                                max-width: 100%;
+                                                                height: auto;
+                                                            }
+                                                            table {
+                                                                border-collapse: collapse;
+                                                                width: 100%;
+                                                                margin-bottom: 1em;
+                                                            }
+                                                            th, td {
+                                                                border: 1px solid rgba(0, 0, 0, 0.12);
+                                                                padding: 8px;
+                                                                text-align: left;
+                                                            }
+                                                            th {
+                                                                background-color: rgba(0, 0, 0, 0.05);
+                                                            }
+                                                        </style>
+                                                        <script>
+                                                            // Send height to parent for iframe resizing
+                                                            function updateHeight() {
+                                                                const height = document.body.scrollHeight;
+                                                                window.parent.postMessage({
+                                                                    id: '${segmentId}',
+                                                                    frameHeight: height
+                                                                }, '*');
+                                                            }
+                                                            
+                                                            // Update on load and on resize
+                                                            window.onload = updateHeight;
+                                                            window.onresize = updateHeight;
+                                                            
+                                                            // Also set up a mutation observer to detect content changes
+                                                            const observer = new MutationObserver(updateHeight);
+                                                            observer.observe(document.documentElement, {
+                                                                childList: true,
+                                                                subtree: true
+                                                            });
+                                                            
+                                                            // Make all links open in a new tab
+                                                            document.addEventListener('click', function(e) {
+                                                                if (e.target.tagName === 'A' && e.target.getAttribute('href')) {
+                                                                    e.target.setAttribute('target', '_blank');
+                                                                    e.target.setAttribute('rel', 'noopener noreferrer');
+                                                                }
+                                                            });
+                                                        </script>
+                                                    </head>
+                                                    <body>
+                                                        <div style="overflow-y: auto;">
+                                                            ${segment.content}
+                                                        </div>
+                                                    </body>
+                                                    </html>
+                                                `}
+                                                style={{
+                                                    width: '100%',
+                                                    height: iframeHeight[segmentId] ? `${iframeHeight[segmentId]}px` : '500px',
+                                                    border: 'none',
+                                                    overflow: 'hidden'
+                                                }}
+                                                scrolling="no"
+                                                frameBorder="0"
+                                            />
+                                        </Box>
+                                    </AccordionDetails>
+                                </Accordion>
+                            );
+                        })}
+                </Box>
+            ))}
+        </Box>
+    );
+};
+
+export default ModuleContentRenderer;

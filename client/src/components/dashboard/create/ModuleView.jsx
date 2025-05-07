@@ -44,6 +44,7 @@ import {
 } from '@mui/icons-material';
 import ReactMarkdown from 'react-markdown';
 import AIGeneration from '../../common/AIGeneration';
+import ModuleContentRenderer from '../../common/ModuleContentRenderer';
 
 // Helper component for Markdown content
 const MarkdownContent = ({ content }) => {
@@ -153,11 +154,55 @@ const ModuleView = () => {
         fetchData();
     }, [id, pathwayId, user, isNewModule]);
 
-    // Handle text input change
+    // Replace it with this updated version:
     const handleInputChange = (e) => {
+        const { name, value } = e.target;
+
+        // Special handling for content field
+        if (name === 'content') {
+            // Check if current content is in segmented format
+            let isSegmented = false;
+            let segmentedContent = null;
+
+            try {
+                // Check if current content is segmented
+                if (typeof formData.content === 'object') {
+                    if (Array.isArray(formData.content)) {
+                        isSegmented = true;
+                        segmentedContent = formData.content;
+                    } else if (formData.content && formData.content.results && Array.isArray(formData.content.results.content)) {
+                        isSegmented = true;
+                        segmentedContent = formData.content.results.content;
+                    }
+                } else if (typeof formData.content === 'string') {
+                    try {
+                        const parsed = JSON.parse(formData.content);
+                        if (Array.isArray(parsed)) {
+                            isSegmented = true;
+                            segmentedContent = parsed;
+                        } else if (parsed && parsed.results && Array.isArray(parsed.results.content)) {
+                            isSegmented = true;
+                            segmentedContent = parsed.results.content;
+                        }
+                    } catch (parseError) {
+                        // Not JSON, treat as regular content
+                    }
+                }
+
+                // If it's segmented content, keep it as is instead of updating
+                if (isSegmented) {
+                    console.log('Segmented content detected, not updating via text field');
+                    return; // Exit without updating
+                }
+            } catch (error) {
+                console.error('Error checking content format:', error);
+            }
+        }
+
+        // For all fields (including non-segmented content)
         setFormData({
             ...formData,
-            [e.target.name]: e.target.value
+            [name]: value
         });
     };
 
@@ -237,15 +282,35 @@ const ModuleView = () => {
                 return;
             }
 
+            // Process the content field to ensure proper serialization
+            let processedContent = formData.content;
+
+            // Check if content is an object that needs to be stringified
+            if (typeof formData.content === 'object' && formData.content !== null) {
+                try {
+                    // Convert the content object to a string using JSON.stringify
+                    // This ensures proper escaping of special characters
+                    processedContent = JSON.stringify(formData.content);
+                } catch (e) {
+                    console.error('Error stringifying content:', e);
+                    setError('Error processing module content. Please try again.');
+                    setLoading(false);
+                    return;
+                }
+            }
+
+            // Create the module data with the processed content
             const moduleData = {
                 name: formData.name,
                 key: formData.key,
                 description: formData.description,
                 prerequisites: formData.prerequisites,
                 concepts: formData.concepts,
-                content: formData.content,
+                content: processedContent, // Use the processed content
                 pathwayId
             };
+
+            console.log('Saving module with data:', moduleData);
 
             let res;
             if (isNewModule) {
@@ -630,16 +695,117 @@ const ModuleView = () => {
                             <Typography variant="subtitle1" gutterBottom>
                                 Content (HTML)
                             </Typography>
-                            <TextField
-                                name="content"
-                                value={formData.content}
-                                onChange={handleInputChange}
-                                fullWidth
-                                multiline
-                                rows={10}
-                                placeholder="Enter HTML content here"
-                                sx={{ fontFamily: 'monospace' }}
-                            />
+
+                            {/* Check if content is in segmented format */}
+                            {(() => {
+                                let isSegmented = false;
+                                let segmentedContent = null;
+
+                                // Try to determine if the content is segmented
+                                try {
+                                    if (typeof formData.content === 'string') {
+                                        // Try to parse as JSON
+                                        const parsed = JSON.parse(formData.content);
+                                        if (Array.isArray(parsed)) {
+                                            isSegmented = true;
+                                            segmentedContent = parsed;
+                                        } else if (parsed && parsed.results && Array.isArray(parsed.results.content)) {
+                                            isSegmented = true;
+                                            segmentedContent = parsed.results.content;
+                                        }
+                                    } else if (formData.content && typeof formData.content === 'object') {
+                                        if (Array.isArray(formData.content)) {
+                                            isSegmented = true;
+                                            segmentedContent = formData.content;
+                                        } else if (formData.content.results && Array.isArray(formData.content.results.content)) {
+                                            isSegmented = true;
+                                            segmentedContent = formData.content.results.content;
+                                        }
+                                    }
+                                } catch (e) {
+                                    console.error('Error parsing content:', e);
+                                }
+
+                                if (isSegmented) {
+                                    // For segmented content, show a read-only view with a warning
+                                    return (
+                                        <Box>
+                                            <Alert severity="info" sx={{ mb: 2 }}>
+                                                This module uses segmented content format which can't be directly edited.
+                                                You can view the segments below. To modify the content, use the "Enhance with AI"
+                                                button or create a new module.
+                                            </Alert>
+
+                                            <Paper
+                                                variant="outlined"
+                                                sx={{
+                                                    p: 2,
+                                                    maxHeight: '400px',
+                                                    overflowY: 'auto',
+                                                    backgroundColor: 'rgba(0,0,0,0.03)'
+                                                }}
+                                            >
+                                                <Typography variant="subtitle2" gutterBottom>
+                                                    {segmentedContent.length} Content Segments
+                                                </Typography>
+
+                                                {segmentedContent.map((segment, index) => (
+                                                    <Box
+                                                        key={index}
+                                                        sx={{
+                                                            mb: 1,
+                                                            p: 1,
+                                                            borderBottom: '1px solid rgba(0,0,0,0.1)',
+                                                            backgroundColor: 'white',
+                                                            borderRadius: 1
+                                                        }}
+                                                    >
+                                                        <Typography variant="body2" fontWeight="bold">
+                                                            {index + 1}. {segment.title} <Chip label={segment.type} size="small" />
+                                                            {segment.section && (
+                                                                <Typography
+                                                                    component="span"
+                                                                    variant="body2"
+                                                                    sx={{ ml: 1, color: 'text.secondary' }}
+                                                                >
+                                                                    Section: {segment.section}
+                                                                </Typography>
+                                                            )}
+                                                        </Typography>
+
+                                                        <Typography
+                                                            variant="body2"
+                                                            sx={{
+                                                                mt: 1,
+                                                                color: 'text.secondary',
+                                                                fontStyle: 'italic'
+                                                            }}
+                                                        >
+                                                            HTML content: {segment.content.length} characters
+                                                        </Typography>
+                                                    </Box>
+                                                ))}
+                                            </Paper>
+                                        </Box>
+                                    );
+                                } else {
+                                    // For traditional content, show the original TextField
+                                    return (
+                                        <TextField
+                                            name="content"
+                                            value={typeof formData.content === 'string' ? formData.content :
+                                                JSON.stringify(formData.content, null, 2)}
+                                            onChange={handleInputChange}
+                                            fullWidth
+                                            multiline
+                                            rows={10}
+                                            placeholder="Enter HTML content here"
+                                            sx={{ fontFamily: 'monospace' }}
+                                        />
+                                    );
+                                }
+                            })()}
+
                             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                                 HTML editor for module content
                             </Typography>
@@ -783,15 +949,9 @@ const ModuleView = () => {
                     </Box>
                 </DialogTitle>
                 <DialogContent>
-                    <Box
-                        sx={{
-                            mt: 2,
-                            p: 2,
-                            border: '1px solid',
-                            borderColor: 'divider',
-                            borderRadius: 1
-                        }}
-                        dangerouslySetInnerHTML={{ __html: module?.content }}
+                    {/* The module.content might be a string or an object with the API response format */}
+                    <ModuleContentRenderer
+                        content={module?.content}
                     />
                 </DialogContent>
             </Dialog>

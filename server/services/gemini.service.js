@@ -259,8 +259,8 @@ class GeminiService {
     }
 
     // Generate module content
+    // Modified generateModuleContent function that always extracts JSON from code blocks
     async generateModuleContent(module, pathway) {
-        // Using the provided module HTML generator function format
         const prereqsArray = module.prerequisites || [[]];
         const prereqsString = JSON.stringify(prereqsArray);
 
@@ -268,93 +268,160 @@ class GeminiService {
         const conceptsString = conceptsArray.map((concept, index) => `${index + 1}. ${concept}`).join('\n');
 
         const prompt = `
-        **Objective:** Create an HTML file presenting an introductory learning module focused on ${module.name || 'this topic'}, designed for ${pathway.targetAudience || 'learners'}.
+    **Objective:** Create a structured learning module focused on ${module.name || 'this topic'}, designed for ${pathway.targetAudience || 'learners'}.
 
-        **Core Concepts to Cover:**
-        Organize the module around the following core concepts, provided in a logical sequence:
-        ${conceptsString}
+    **Core Concepts to Cover:**
+    Organize the module around the following core concepts, provided in a logical sequence:
+    ${conceptsString}
 
-        **Context within Learning Pathway:**
-        * **Prerequisite Knowledge:** Assumes completion of the following prerequisite modules and understanding of their associated concepts. Include a brief activation of prior knowledge related to these concepts in the Warmup segment(s).
-            * Prerequisites: ${prereqsString}
+    **Context within Learning Pathway:**
+    * **Prerequisite Knowledge:** Assumes completion of the following prerequisite modules and understanding of their associated concepts. Include a brief activation of prior knowledge related to these concepts in the Warmup segment(s).
+        * Prerequisites: ${prereqsString}
 
-        * **Leads To:** This module serves as a prerequisite for future modules.
+    * **Leads To:** This module serves as a prerequisite for future modules.
 
-        **Module Presentation Structure:**
-        * **Information Architecture:** Structure the module logically by concept using sequentially numbered sections. Use top-level headings (H2) for major concepts or sections. Use lower-level headings (H3, H4) for individual segments within those sections. Do NOT include explicit "Phase" titles or phase numbers in the learner-facing output.
-        * **Segment Types:** Break the module content into distinct segments using the following types: article, research, exercise, session, project. The type should be clear visually (see Styling) but NOT indicated with bracketed text labels like [article] in the final output.
-        * **Learner-Facing Content Only:** Ensure the final HTML output contains ONLY content intended for the learner. Omit any internal instructions, meta-labels, preparation notes, session guidance text separate from the main description, system requirement notes, or other scaffolding text used in this prompt.
+    **Module Presentation Structure:**
+    * **Information Architecture:** Structure the module logically by concept using sequentially numbered sections. Use top-level headings (H2) for major concepts or sections. Use lower-level headings (H3, H4) for individual segments within those sections.
+    * **Segment Types:** Break the module content into distinct segments using the following types: article, research, exercise, session, project. Each segment should be structured as a separate object in the JSON array.
 
-        **Segment Content & Instructions:**
+    **Segment Content & Instructions:**
 
-        * **Warmup Segment(s):**
-            * Start the module with one or more introductory segments designated for warmup.
-            * Purpose: Activate relevant prior knowledge from the listed prerequisite concepts, establish context for the new module, and prime for new learning.
-            * Components: Keep brief. Include relevance framing (why this topic matters), prior knowledge activation (e.g., self-assessment questions related to prerequisite concepts), and curiosity stimulation (e.g., engaging question/problem related to the module topic).
-        * **research Segments:**
-            * Purpose: Introduce new concepts through guided investigation.
-            * This is the primary segment for knowledge transfer and should be used for most of the module's content.
-            * Provide specific questions or tasks for students to investigate related to the concept being introduced.
-            * Provide direct hyperlinks to specific pages within reliable online resources that help answer the research questions. Ensure links open in a new tab.
-            * Clearly state the expected outcome (e.g., understanding required, notes to take, summary to write).
-        * **article Segments:**
-            * Purpose: Introduce concepts or provide concise summaries/checkpoints.
-            * Use for brief introductions to set the stage or as checkpoints after research/application segments to summarize key takeaways.
-        * **exercise Segments:**
-            * Purpose: Allow learners to practice and apply concepts actively.
-            * Provide practical, hands-on tasks relevant to the module's concepts, with clear instructions and expected outcomes.
-            * Place these after relevant research/article segments and before any corresponding Learner Focus session.
-            * **IMPORTANT:** Ensure instructions explicitly state that learners should use placeholder or fictional information where personal details might otherwise be requested. Avoid deliverables requiring users to expose personal information in general, even if it's fictional.
-        * **integration Segments:**
-            * Purpose: Connect knowledge across different concepts within the module.
-            * Include *at least two* distinct integration segments (e.g., exercises or mini-projects) of graduating complexity after several core concepts have been introduced and applied, but before the final consolidation section. These should require learners to synthesize multiple concepts or apply them in broader scenarios relevant to the module's domain. Increase the number of integration segments for modules covering more complex or numerous concepts.
-        * **session Segments (Peer Mentoring):**
-            * **General Placement:** Learner Focus sessions are placed throughout the module after relevant exercises. Mentor Focus sessions are placed only within the Consolidation Section. The platform's underlying system requires a 1:1 balance: participation in a Learner Focus session creates an obligation to complete a Mentor Focus session for module completion. **Generate *exactly* one Mentor Focus session for each Learner Focus session generated.** Do NOT mention this system requirement directly in the learner-facing HTML output.
-            * **Learner Focus Sessions:**
-                * **Placement:** Include Learner Focus session segments immediately after relevant application exercises throughout the module where feedback would be beneficial.
-                * **Function:** Within a Learner Focus session, the student initiating the session (Learner) focuses on a specific concept (Concept X) or exercise outcome they just worked on. They review their work with a peer mentor, identify confusion points, ask specific questions, and receive feedback/clarification related to that specific work.
-                * **Task Definition:** Define concrete, actionable tasks driven by the Learner's needs for the specific concept or exercise review.
-                * **Waiting Instruction:** Include clear instructions for the learner while waiting for a peer match: "While waiting for a peer mentor connection, you should proceed to the next segment in the module. Alternatively, you can use this time to review the key concepts and resources related to the segment you just completed."
-            * **Mentor Focus Sessions (Described Here, Placed ONLY in Consolidation Section):**
-                * **Placement:** Generate these segments ONLY within the final Consolidation Section, *before* the project segment. Ensure the number matches the number of Learner Focus sessions.
-                * **Function:** These sessions fulfill the reciprocal participation requirement. Each session focuses on a single, specific key concept (Concept Y) covered *earlier in the module*. Clearly state the specific Concept Y this session targets within the learner-facing description.
-                * **Role:** The student acts as a mentor for a peer needing help with Concept Y. Both mentor and learner in this session are focused *only* on Concept Y.
-                * **Purpose (Learner View):** Frame the purpose purely around pedagogical benefits for the student *acting as the mentor*, e.g., "Reinforce your understanding of Concept Y by explaining it to a peer," "Solidify your knowledge through teaching," or "Help a fellow learner while deepening your own comprehension (the protege effect)."
-                * **Mentor Preparation:** Include clear instructions *within the session segment description* guiding the student (acting as mentor) on how to prepare for mentoring on Concept Y (e.g., review the concept using module resources, anticipate questions their peer might have about Concept Y based on earlier exercises, plan simple explanations or examples for Concept Y). These preparation instructions ARE learner-facing for the student acting as mentor.
-                * **Session Guidance (for the Mentor):** Note that the actual session activities will be guided by the Learner's needs regarding Concept Y. The Mentor's role is to respond, explain Concept Y, review the peer's work related to Concept Y, answer questions about Concept Y, and guide corrections related to Concept Y. These guidance points ARE learner-facing for the student acting as mentor.
-                * **Waiting Instruction:** Include clear instructions for the student (acting as mentor) while waiting for a peer match, and done with mentor preperation.
-            * **Project Presentation Sessions:**
-                * **Placement:** Generate this segment once after the final project.
-                * **Function:** This session focuses on the project segment. The student reviews their project with a peer, discusses challenges, and shares reflections on the project. There are no mentor/mentee roles in this session, and this session doesn't require a 1:1 balance.
-                * **Task Definition:** Define concrete, actionable tasks driven by the students' needs for the project review.
-        * **Consolidation Section:** Include a final major section dedicated to consolidation. This section should contain the Mentor Focus Sessions first, followed by the Project Segment, and then the final Project-related Learner Focus Session (if included).
-        * **project Segment (Place ONLY in Consolidation Section, AFTER Mentor Sessions):**
-            * Purpose: Synthesize module concepts in a significant application task.
-            * Include one final project segment. Make this section detailed and clearly structured for the learner.
-            * **Project Structure:** Structure the project description using the following clear, learner-friendly stages with descriptive headings. Adapt the specific guidance within each stage to be relevant to the module's topic:
-                1.  **Getting Started:** Describe the project goal clearly. Provide a simple real-world context or scenario (using fictional details). Briefly mention the key concepts from this module that will be needed. Explain the learning value (what the student will be able to do). List clear, domain-relevant success criteria for the final deliverable. Mention necessary tools or materials, and where to get them.
-                2.  **Planning Your Project:** Provide simple, guided steps for planning relevant to the project type.
-                3.  **Building Step-by-Step:** Define at least 3 clear, manageable milestones with instructions.
-                4.  **(Optional) Adding Polish / Challenge:** Suggest an optional small enhancement, e.g., "Try applying [Advanced Concept Z]," or "Consider alternative interpretations/designs."
-                5.  **Final Review & Reflection:** Instruct the learner to do a final check against the success criteria and perform any final validation relevant to the domain. Include 2-3 specific reflection prompts relevant to the learning process and the module's content.
-            * Define core requirements for the final project artifact clearly.
-            * **IMPORTANT:** Reiterate that placeholder or fictional information should be used instead of personal details.
+    * **Warmup Segment(s):**
+        * Start the module with one or more introductory segments designated for warmup.
+        * Purpose: Activate relevant prior knowledge from the listed prerequisite concepts, establish context for the new module, and prime for new learning.
+        * Components: Keep brief. Include relevance framing (why this topic matters), prior knowledge activation (e.g., self-assessment questions related to prerequisite concepts), and curiosity stimulation (e.g., engaging question/problem related to the module topic).
+    * **research Segments:**
+        * Purpose: Introduce new concepts through guided investigation.
+        * This is the primary segment for knowledge transfer and should be used for most of the module's content.
+        * Provide specific questions or tasks for students to investigate related to the concept being introduced.
+        * Provide direct hyperlinks to specific pages within reliable online resources that help answer the research questions. Ensure links open in a new tab.
+        * Clearly state the expected outcome (e.g., understanding required, notes to take, summary to write).
+    * **article Segments:**
+        * Purpose: Introduce concepts or provide concise summaries/checkpoints.
+        * Use for brief introductions to set the stage or as checkpoints after research/application segments to summarize key takeaways.
+    * **exercise Segments:**
+        * Purpose: Allow learners to practice and apply concepts actively.
+        * Provide practical, hands-on tasks relevant to the module's concepts, with clear instructions and expected outcomes.
+        * Place these after relevant research/article segments and before any corresponding Learner Focus session.
+        * **IMPORTANT:** Ensure instructions explicitly state that learners should use placeholder or fictional information where personal details might otherwise be requested. Avoid deliverables requiring users to expose personal information in general, even if it's fictional.
+    * **integration Segments:**
+        * Purpose: Connect knowledge across different concepts within the module.
+        * Include *at least two* distinct integration segments (e.g., exercises or mini-projects) of graduating complexity after several core concepts have been introduced and applied, but before the final consolidation section. These should require learners to synthesize multiple concepts or apply them in broader scenarios relevant to the module's domain.
+    * **session Segments (Peer Mentoring):**
+        * **Learner Focus Sessions:**
+            * **Placement:** Include Learner Focus session segments immediately after relevant application exercises throughout the module where feedback would be beneficial.
+            * **Function:** Define concrete, actionable tasks driven by the Learner's needs for the specific concept or exercise review.
+            * **Waiting Instruction:** Include clear instructions for the learner while waiting for a peer match.
+        * **Mentor Focus Sessions:**
+            * **Placement:** Generate these segments ONLY within the final Consolidation Section, *before* the project segment. Ensure the number matches the number of Learner Focus sessions.
+            * **Function:** These sessions fulfill the reciprocal participation requirement. Each session focuses on a single, specific key concept.
+        * **Project Presentation Sessions:**
+            * **Placement:** Generate this segment once after the final project.
+            * **Function:** This session focuses on the project segment. The student reviews their project with a peer, discusses challenges, and shares reflections on the project.
+    * **Consolidation Section:** Include a final major section dedicated to consolidation. This section should contain the Mentor Focus Sessions first, followed by the Project Segment, and then the final Project-related Learner Focus Session (if included).
+    * **project Segment:**
+        * Purpose: Synthesize module concepts in a significant application task.
+        * Include one final project segment. Make this section detailed and clearly structured for the learner.
+        * Define core requirements for the final project artifact clearly.
+        * **IMPORTANT:** Reiterate that placeholder or fictional information should be used instead of personal details.
 
-        **Output Format:**
-        * Provide the complete module in a well-structured, valid HTML format.
-        * Use semantic HTML elements where appropriate (e.g., \`article\`, \`section\` if applicable for segment grouping, standard content tags like \`h1\`-\`h6\`, \`p\`, \`ul\`, \`ol\`, \`li\`, \`a\`, \`img\`, \`code\`, \`em\`, \`strong\`).
-        * Employ simple, accessible styling using embedded CSS.
-            * **Theme:** Use a clean, professional theme with high contrast. Ensure text is easily readable against backgrounds. Use distinct, consistent, accessible accent colors (with sufficient contrast ratios against text and background) to visually differentiate segment types (e.g., using border-left colors). Ensure link colors are standard and clear.
-            * **Structure:** Use clear headings (H1 for module title, H2 for major sections/concepts, H3/H4 for segments). Ensure consistent spacing and layout for readability.
-        * The final HTML output must be ready for direct presentation to a learner and contain no internal notes, meta-labels, or instructions intended for the AI.
-        * **HTML Syntax and Escaping:**
-            * The generated HTML output must strictly use HTML tags for all formatting and structure. **Absolutely NO markdown syntax should appear in the final HTML content presented to the learner, unless the module is explaining markdown.** Use appropriate HTML tags like \`<strong>\` for strong importance, \`<em>\` for emphasis, \`<code>\` for inline code or technical terms, \`<p>\` for paragraphs, \`<ul>/<ol>/<li>\` for lists, \`<a>\` for links, etc.
-            * Double check that the generated HTML is not broken and structurally valid.
-            * Crucially, ensure that any example text snippets or mentions of specific syntax (if applicable to the domain, and wrapped in \`<code>\` tags) within the learner-facing content are displayed correctly. Ensure that literal angle brackets (\`<\`, \`>\`) used within content (e.g., in a code example or mathematical formula) are properly escaped using HTML entities (e.g., \`&lt;\` for \`<\`, \`&gt;\` for \`>\`). Ensure literal ampersands (\`&\`) are escaped as \`&amp;\`.
-            * Ensure that HTML tags intended as actual document markup (like the \`<h2>\`, \`<p>\`, \`<a>\` tags structuring the module itself) are correctly formed and NOT accidentally escaped.
-        `;
+    **Output Format:**
+    * The structure should be an array of segment objects:
+    [
+      {
+        "type": "string", // one of: article, research, exercise, session, project, integration
+        "title": "string", // the title of the segment
+        "content": "string", // HTML content of the segment
+        "section": "string" // optional: the section this segment belongs to (e.g., "Introduction", "Consolidation")
+      }
+    ]
+    * Use only standard HTML for the content field (h1, h2, h3, p, ul, ol, li, a, code, em, strong, etc.)
+    * Do not use any custom CSS classes or styles in the HTML content
+    * Make sure all HTML in the content field is properly escaped
+    `;
 
-        return this.generateContent(prompt);
+        const response = await this.generateContent(prompt);
+
+        // Always try to extract JSON from the response, assuming it might be wrapped in code blocks
+        const extractJsonFromResponse = (text) => {
+            console.log('Extracting JSON from response...');
+
+            // Try to extract from code blocks first
+            const codeBlockRegex = /```(?:json)?\s*([\s\S]*?)\s*```/;
+            const codeBlockMatch = text.match(codeBlockRegex);
+
+            if (codeBlockMatch && codeBlockMatch[1]) {
+                console.log('Found code block, extracting JSON...');
+                const jsonContent = codeBlockMatch[1].trim();
+                return jsonContent;
+            }
+
+            // If no code block found, try to find array-like content
+            const arrayRegex = /(\[\s*\{[\s\S]*\}\s*\])/;
+            const arrayMatch = text.match(arrayRegex);
+
+            if (arrayMatch && arrayMatch[1]) {
+                console.log('Found array-like content, extracting...');
+                return arrayMatch[1].trim();
+            }
+
+            // If nothing found, return the original text (it might be valid JSON already)
+            console.log('No JSON structure found, returning original text');
+            return text;
+        };
+
+        try {
+            // Extract the JSON content from the response
+            const extractedJson = extractJsonFromResponse(response);
+            console.log('Attempting to parse extracted content as JSON');
+
+            // Parse the extracted content
+            const parsedContent = JSON.parse(extractedJson);
+
+            // Validate the content structure
+            if (Array.isArray(parsedContent) && parsedContent.length > 0) {
+                // Check if each item has required properties
+                const isValid = parsedContent.every(segment =>
+                    segment &&
+                    typeof segment === 'object' &&
+                    'type' in segment &&
+                    'title' in segment &&
+                    'content' in segment
+                );
+
+                if (isValid) {
+                    console.log('Successfully parsed valid content structure');
+                    return parsedContent;
+                } else {
+                    throw new Error('Invalid segment structure in JSON array');
+                }
+            } else {
+                throw new Error('Parsed content is not an array or is empty');
+            }
+        } catch (e) {
+            console.error('Failed to parse module content:', e.message);
+            console.error('Response excerpt:', response.substring(0, 500) + '...');
+
+            // Return a fallback segment
+            const fallbackSegment = [{
+                type: "article",
+                title: "Module Content",
+                content: `
+                <div>
+                    <h2>There was an error generating structured content</h2>
+                    <p>The system was unable to generate properly formatted content segments. 
+                    The raw content is displayed below for review.</p>
+                    <hr>
+                    <div style="white-space: pre-wrap; font-family: monospace; background: #f5f5f5; padding: 15px; border-radius: 5px;">
+                        ${response.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
+                    </div>
+                </div>
+            `,
+                section: "Content"
+            }];
+
+            return fallbackSegment;
+        }
     }
 
     // Generate pathway structure using the provided prompt

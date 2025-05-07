@@ -144,6 +144,7 @@ const AIGeneration = ({
         return descriptions[option] || '';
     };
 
+    // Replace it with this updated version that handles segmented content:
     const renderContent = (option, content) => {
         if (option === 'concepts' || option === 'prerequisites') {
             return (
@@ -160,32 +161,95 @@ const AIGeneration = ({
                 </Box>
             );
         } else if (option === 'content') {
-            return (
-                <Box sx={{
-                    maxHeight: '300px',
-                    overflowY: 'auto',
-                    p: 1,
-                    border: '1px solid rgba(0, 0, 0, 0.1)',
-                    borderRadius: 1
-                }}>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                        HTML content (showing preview, truncated)
-                    </Typography>
-                    <Box
-                        sx={{
-                            p: 1,
-                            backgroundColor: 'rgba(0, 0, 0, 0.03)',
-                            maxHeight: '200px',
-                            overflowY: 'auto',
-                            fontFamily: 'monospace',
-                            fontSize: '0.8rem',
-                            whiteSpace: 'pre-wrap'
-                        }}
-                    >
-                        {content.length > 1000 ? content.substring(0, 1000) + '...' : content}
+            // Check if content is in the segmented format
+            let segmentContent = null;
+            if (content && typeof content === 'object') {
+                if (Array.isArray(content)) {
+                    segmentContent = content;
+                } else if (content.results && content.results.content) {
+                    segmentContent = content.results.content;
+                }
+            }
+
+            if (segmentContent) {
+                // Render segmented content summary
+                return (
+                    <Box sx={{
+                        maxHeight: '300px',
+                        overflowY: 'auto',
+                        p: 1,
+                        border: '1px solid rgba(0, 0, 0, 0.1)',
+                        borderRadius: 1
+                    }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                            Segmented content with {segmentContent.length} segments
+                        </Typography>
+                        <Box
+                            sx={{
+                                p: 1,
+                                backgroundColor: 'rgba(0, 0, 0, 0.03)',
+                                maxHeight: '200px',
+                                overflowY: 'auto',
+                                fontFamily: 'monospace',
+                                fontSize: '0.8rem'
+                            }}
+                        >
+                            <ul>
+                                {segmentContent.slice(0, 5).map((segment, index) => (
+                                    <li key={index}>
+                                        <strong>{segment.type}</strong>: {segment.title}
+                                        {segment.section && <span> (Section: {segment.section})</span>}
+                                    </li>
+                                ))}
+                                {segmentContent.length > 5 && (
+                                    <li>... and {segmentContent.length - 5} more segments</li>
+                                )}
+                            </ul>
+                        </Box>
                     </Box>
-                </Box>
-            );
+                );
+            } else if (typeof content === 'string') {
+                // Handle legacy content format (string)
+                return (
+                    <Box sx={{
+                        maxHeight: '300px',
+                        overflowY: 'auto',
+                        p: 1,
+                        border: '1px solid rgba(0, 0, 0, 0.1)',
+                        borderRadius: 1
+                    }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                            HTML content (showing preview, truncated)
+                        </Typography>
+                        <Box
+                            sx={{
+                                p: 1,
+                                backgroundColor: 'rgba(0, 0, 0, 0.03)',
+                                maxHeight: '200px',
+                                overflowY: 'auto',
+                                fontFamily: 'monospace',
+                                fontSize: '0.8rem',
+                                whiteSpace: 'pre-wrap'
+                            }}
+                        >
+                            {content.length > 1000 ? content.substring(0, 1000) + '...' : content}
+                        </Box>
+                    </Box>
+                );
+            } else {
+                // Handle other content formats
+                return (
+                    <Box sx={{
+                        p: 1,
+                        backgroundColor: 'rgba(0, 0, 0, 0.03)',
+                        borderRadius: 1
+                    }}>
+                        <Typography variant="body2" color="text.secondary">
+                            Unknown content format
+                        </Typography>
+                    </Box>
+                );
+            }
         } else {
             return (
                 <Box
