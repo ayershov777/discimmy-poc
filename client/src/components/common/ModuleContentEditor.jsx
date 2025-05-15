@@ -18,7 +18,8 @@ import {
     DialogActions,
     Grid,
     Divider,
-    Alert
+    Alert,
+    Collapse
 } from '@mui/material';
 import {
     Add,
@@ -33,7 +34,9 @@ import {
     Assignment,
     Group,
     Build,
-    Code
+    Code,
+    ExpandMore,
+    ExpandLess
 } from '@mui/icons-material';
 import ReactMarkdown from 'react-markdown';
 
@@ -63,11 +66,11 @@ const SegmentEditor = ({ segment, onSave, onCancel }) => {
         if (typeof content === 'string') {
             return content;
         }
-        
+
         if (Array.isArray(content)) {
             return content.join('\n\n');
         }
-        
+
         if (typeof content === 'object' && content !== null) {
             try {
                 return JSON.stringify(content, null, 2);
@@ -76,7 +79,7 @@ const SegmentEditor = ({ segment, onSave, onCancel }) => {
                 return '';
             }
         }
-        
+
         return String(content || '');
     };
 
@@ -184,11 +187,11 @@ const SegmentEditor = ({ segment, onSave, onCancel }) => {
     );
 };
 
-// Preview component for a segment
-const SegmentPreview = ({ segment, onEdit, onDelete, onMoveUp, onMoveDown, isFirst, isLast }) => {
+// Preview component for a segment with collapsible content
+const SegmentPreview = ({ segment, onEdit, onDelete, onMoveUp, onMoveDown, isFirst, isLast, isExpanded, onToggleExpand }) => {
     return (
         <Card variant="outlined" sx={{ mb: 2 }}>
-            <CardContent>
+            <CardContent sx={{ pb: 1 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     {segmentIcons[segment.type] || <Article color="primary" />}
                     <Typography variant="h6">{segment.title}</Typography>
@@ -199,9 +202,23 @@ const SegmentPreview = ({ segment, onEdit, onDelete, onMoveUp, onMoveDown, isFir
                     </Typography>
                 )}
                 <Divider sx={{ my: 1 }} />
-                <Box sx={{ maxHeight: '200px', overflow: 'auto', bgcolor: 'background.paper', p: 1, borderRadius: 1 }}>
-                    <ReactMarkdown>{segment.content}</ReactMarkdown>
+
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1, mb: 1 }}>
+                    <Button
+                        size="small"
+                        onClick={onToggleExpand}
+                        endIcon={isExpanded ? <ExpandLess /> : <ExpandMore />}
+                        sx={{ textTransform: 'none' }}
+                    >
+                        {isExpanded ? "Collapse Content" : "Expand Content"}
+                    </Button>
                 </Box>
+
+                <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                    <Box sx={{ bgcolor: 'background.paper', p: 1, borderRadius: 1, mt: 1 }}>
+                        <ReactMarkdown>{segment.content}</ReactMarkdown>
+                    </Box>
+                </Collapse>
             </CardContent>
             <CardActions>
                 <IconButton onClick={onEdit} title="Edit">
@@ -228,6 +245,7 @@ const ModuleContentEditor = ({ value, onChange }) => {
     const [isAddingNew, setIsAddingNew] = useState(false);
     const [deleteIndex, setDeleteIndex] = useState(null);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [expandedSegments, setExpandedSegments] = useState({});
 
     // Initialize segments from value
     useEffect(() => {
@@ -235,8 +253,8 @@ const ModuleContentEditor = ({ value, onChange }) => {
             // Ensure all segments have string content
             const normalizedSegments = value.map(segment => ({
                 ...segment,
-                content: typeof segment.content === 'string' 
-                    ? segment.content 
+                content: typeof segment.content === 'string'
+                    ? segment.content
                     : Array.isArray(segment.content)
                         ? segment.content.join('\n\n')
                         : typeof segment.content === 'object'
@@ -244,6 +262,15 @@ const ModuleContentEditor = ({ value, onChange }) => {
                             : String(segment.content || '')
             }));
             setSegments(normalizedSegments);
+
+            // Initialize expanded state for all segments (default first segment expanded)
+            if (Object.keys(expandedSegments).length === 0) {
+                const initialExpandedState = {};
+                normalizedSegments.forEach((_, index) => {
+                    initialExpandedState[index] = index === 0; // Expand only the first segment by default
+                });
+                setExpandedSegments(initialExpandedState);
+            }
         } else {
             setSegments([]);
         }
@@ -258,14 +285,19 @@ const ModuleContentEditor = ({ value, onChange }) => {
     // Handle saving a segment
     const handleSaveSegment = (segmentData) => {
         let newSegments;
-        
+
         if (isAddingNew) {
             newSegments = [...segments, segmentData];
+            // Auto-expand newly added segment
+            setExpandedSegments({
+                ...expandedSegments,
+                [segments.length]: true
+            });
         } else {
             newSegments = [...segments];
             newSegments[editingIndex] = segmentData;
         }
-        
+
         updateSegments(newSegments);
         setEditingIndex(null);
         setIsAddingNew(false);
@@ -275,6 +307,19 @@ const ModuleContentEditor = ({ value, onChange }) => {
     const handleConfirmDelete = () => {
         const newSegments = segments.filter((_, index) => index !== deleteIndex);
         updateSegments(newSegments);
+
+        // Update expanded states after deletion
+        const newExpandedSegments = {};
+        Object.keys(expandedSegments).forEach(key => {
+            const keyNum = parseInt(key);
+            if (keyNum < deleteIndex) {
+                newExpandedSegments[keyNum] = expandedSegments[keyNum];
+            } else if (keyNum > deleteIndex) {
+                newExpandedSegments[keyNum - 1] = expandedSegments[keyNum];
+            }
+        });
+        setExpandedSegments(newExpandedSegments);
+
         setDeleteDialogOpen(false);
         setDeleteIndex(null);
     };
@@ -282,25 +327,47 @@ const ModuleContentEditor = ({ value, onChange }) => {
     // Handle moving a segment up
     const handleMoveUp = (index) => {
         if (index <= 0) return;
-        
+
         const newSegments = [...segments];
         const temp = newSegments[index];
         newSegments[index] = newSegments[index - 1];
         newSegments[index - 1] = temp;
-        
+
+        // Swap expanded states
+        const newExpandedSegments = { ...expandedSegments };
+        const tempExpanded = newExpandedSegments[index];
+        newExpandedSegments[index] = newExpandedSegments[index - 1];
+        newExpandedSegments[index - 1] = tempExpanded;
+        setExpandedSegments(newExpandedSegments);
+
         updateSegments(newSegments);
     };
 
     // Handle moving a segment down
     const handleMoveDown = (index) => {
         if (index >= segments.length - 1) return;
-        
+
         const newSegments = [...segments];
         const temp = newSegments[index];
         newSegments[index] = newSegments[index + 1];
         newSegments[index + 1] = temp;
-        
+
+        // Swap expanded states
+        const newExpandedSegments = { ...expandedSegments };
+        const tempExpanded = newExpandedSegments[index];
+        newExpandedSegments[index] = newExpandedSegments[index + 1];
+        newExpandedSegments[index + 1] = tempExpanded;
+        setExpandedSegments(newExpandedSegments);
+
         updateSegments(newSegments);
+    };
+
+    // Toggle expand/collapse for a segment
+    const toggleExpandSegment = (index) => {
+        setExpandedSegments({
+            ...expandedSegments,
+            [index]: !expandedSegments[index]
+        });
     };
 
     return (
@@ -327,7 +394,6 @@ const ModuleContentEditor = ({ value, onChange }) => {
             )}
 
             {/* Segment list */}
-            {console.log('Rendering segments:', segments)}
             {segments.map((segment, index) => (
                 <React.Fragment key={index}>
                     {editingIndex === index ? (
@@ -353,6 +419,8 @@ const ModuleContentEditor = ({ value, onChange }) => {
                             onMoveDown={() => handleMoveDown(index)}
                             isFirst={index === 0}
                             isLast={index === segments.length - 1}
+                            isExpanded={!!expandedSegments[index]}
+                            onToggleExpand={() => toggleExpandSegment(index)}
                         />
                     )}
                 </React.Fragment>
