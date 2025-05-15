@@ -92,11 +92,11 @@ const Dashboard = () => {
                 component="main"
                 sx={{
                     flexGrow: 1,
-                    p: 3,
+                    p: 0, // Reduced padding to maximize content area
                     backgroundColor: 'background.default'
                 }}
             >
-                <Container>
+                <Container maxWidth="xl" sx={{ p: 0 }}> {/* Changed to xl and removed padding */}
                     <Routes>
                         <Route path="/" element={<Navigate to="/dashboard/learn" />} />
                         <Route path="/learn/*" element={<LearnView />} />
