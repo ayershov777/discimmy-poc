@@ -1,4 +1,3 @@
-// Import statements - add our new ModuleContentEditor
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import AuthContext from '../../../context/AuthContext';
@@ -45,7 +44,7 @@ import {
 } from '@mui/icons-material';
 import ReactMarkdown from 'react-markdown';
 import AIGeneration from '../../common/AIGeneration';
-import ModuleContentRenderer from '../../common/ModuleContentRenderer';
+import ModuleContentSlideshow from '../../common/ModuleContentSlideshow';
 import ModuleContentEditor from '../../common/ModuleContentEditor';
 
 // Helper component for Markdown content
@@ -102,11 +101,11 @@ const ModuleView = () => {
     // Helper function to parse content from various formats
     const parseContent = (contentData) => {
         if (!contentData) return [];
-        
+
         if (Array.isArray(contentData)) {
             return contentData;
         }
-        
+
         // Try to parse JSON string
         if (typeof contentData === 'string') {
             try {
@@ -124,12 +123,12 @@ const ModuleView = () => {
                 }];
             }
         }
-        
+
         // If it's an object with results.content
         if (contentData && typeof contentData === 'object' && contentData.results && Array.isArray(contentData.results.content)) {
             return contentData.results.content;
         }
-        
+
         // Default to empty array
         return [];
     };
@@ -345,7 +344,7 @@ const ModuleView = () => {
     // Handle AI generation results
     const handleAIGenerationResults = (newData) => {
         const updatedFormData = { ...formData };
-        
+
         Object.keys(newData).forEach(key => {
             if (key !== 'applied' && newData[key]) {
                 if (key === 'content') {
@@ -356,7 +355,7 @@ const ModuleView = () => {
                 }
             }
         });
-        
+
         setFormData(updatedFormData);
     };
 
@@ -692,10 +691,10 @@ const ModuleView = () => {
                             <Typography variant="subtitle1" gutterBottom>
                                 Content
                             </Typography>
-                            
-                            <ModuleContentEditor 
-                                value={formData.content} 
-                                onChange={handleContentChange} 
+
+                            <ModuleContentEditor
+                                value={formData.content}
+                                onChange={handleContentChange}
                             />
                         </Box>
                     </Stack>
@@ -836,10 +835,11 @@ const ModuleView = () => {
                         </IconButton>
                     </Box>
                 </DialogTitle>
-                <DialogContent>
-                    {/* Use the ModuleContentRenderer component for viewing module content */}
-                    <ModuleContentRenderer
+                <DialogContent dividers>
+                    {/* Use the ModuleContentSlideshow component for viewing module content */}
+                    <ModuleContentSlideshow
                         content={module?.content}
+                        onClose={() => setContentDialogOpen(false)}
                     />
                 </DialogContent>
             </Dialog>
