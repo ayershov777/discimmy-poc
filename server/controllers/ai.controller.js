@@ -12,15 +12,33 @@ exports.generatePathwayProperties = async (req, res) => {
             return res.status(400).json({ message: 'Pathway ID and properties array are required' });
         }
 
-        // Find the pathway
-        const pathway = await Pathway.findById(pathwayId);
-        if (!pathway) {
-            return res.status(404).json({ message: 'Pathway not found' });
-        }
+        let pathway;
 
-        // Check ownership
-        if (pathway.owner.toString() !== req.user.id.toString()) {
-            return res.status(403).json({ message: 'Not authorized to modify this pathway' });
+        // Special case: If pathwayId is "new", we're generating for an unsaved pathway
+        // In this case, use the data from the request body instead of fetching from DB
+        if (pathwayId === "new") {
+            // Create a temporary pathway object from request data
+            // This allows AI generation to work with form data before it's saved
+            pathway = {
+                title: req.body.title || '',
+                description: req.body.description || '',
+                goal: req.body.goal || '',
+                requirements: req.body.requirements || '',
+                targetAudience: req.body.targetAudience || '',
+                // Set owner to the current user
+                owner: req.user.id
+            };
+        } else {
+            // Regular case: Find the pathway in the database
+            pathway = await Pathway.findById(pathwayId);
+            if (!pathway) {
+                return res.status(404).json({ message: 'Pathway not found' });
+            }
+
+            // Check ownership
+            if (pathway.owner.toString() !== req.user.id.toString()) {
+                return res.status(403).json({ message: 'Not authorized to modify this pathway' });
+            }
         }
 
         const results = {};
@@ -62,8 +80,8 @@ exports.generatePathwayProperties = async (req, res) => {
             }
         }
 
-        // If apply=true in the request, update the pathway
-        if (req.body.apply === true && Object.keys(updates).length > 0) {
+        // If apply=true in the request and pathwayId is not "new", update the pathway
+        if (req.body.apply === true && pathwayId !== "new" && Object.keys(updates).length > 0) {
             await Pathway.findByIdAndUpdate(pathwayId, updates);
             results.applied = true;
         } else {
@@ -92,21 +110,49 @@ exports.generateModuleProperties = async (req, res) => {
             return res.status(400).json({ message: 'Module ID and properties array are required' });
         }
 
-        // Find the module
-        const module = await Module.findById(moduleId);
-        if (!module) {
-            return res.status(404).json({ message: 'Module not found' });
-        }
+        let module;
+        let pathway;
 
-        // Find the parent pathway
-        const pathway = await Pathway.findById(module.pathway);
-        if (!pathway) {
-            return res.status(404).json({ message: 'Parent pathway not found' });
-        }
+        // Special case: If moduleId is "new", we're generating for an unsaved module
+        if (moduleId === "new") {
+            // Create a temporary module object from request data
+            module = {
+                name: req.body.name || '',
+                key: req.body.key || '',
+                description: req.body.description || '',
+                prerequisites: req.body.prerequisites || [[]],
+                concepts: req.body.concepts || [],
+                content: req.body.content || [],
+                pathway: req.body.pathwayId
+            };
 
-        // Check ownership
-        if (pathway.owner.toString() !== req.user.id.toString()) {
-            return res.status(403).json({ message: 'Not authorized to modify this module' });
+            // We still need to fetch the parent pathway for context
+            pathway = await Pathway.findById(req.body.pathwayId);
+            if (!pathway) {
+                return res.status(404).json({ message: 'Parent pathway not found' });
+            }
+
+            // Check ownership
+            if (pathway.owner.toString() !== req.user.id.toString()) {
+                return res.status(403).json({ message: 'Not authorized to modify modules in this pathway' });
+            }
+        } else {
+            // Regular case: Find the existing module
+            module = await Module.findById(moduleId);
+            if (!module) {
+                return res.status(404).json({ message: 'Module not found' });
+            }
+
+            // Find the parent pathway
+            pathway = await Pathway.findById(module.pathway);
+            if (!pathway) {
+                return res.status(404).json({ message: 'Parent pathway not found' });
+            }
+
+            // Check ownership
+            if (pathway.owner.toString() !== req.user.id.toString()) {
+                return res.status(403).json({ message: 'Not authorized to modify this module' });
+            }
         }
 
         const results = {};
@@ -115,7 +161,8 @@ exports.generateModuleProperties = async (req, res) => {
         // For prerequisites, we need available modules
         let availableModules = [];
         if (properties.includes('prerequisites')) {
-            availableModules = await Module.find({ pathway: module.pathway });
+            const pathwayId = moduleId === "new" ? req.body.pathwayId : module.pathway;
+            availableModules = await Module.find({ pathway: pathwayId });
         }
 
         // Generate requested properties
@@ -154,8 +201,8 @@ exports.generateModuleProperties = async (req, res) => {
             }
         }
 
-        // If apply=true in the request, update the module
-        if (req.body.apply === true && Object.keys(updates).length > 0) {
+        // If apply=true in the request and moduleId is not "new", update the module
+        if (req.body.apply === true && moduleId !== "new" && Object.keys(updates).length > 0) {
             await Module.findByIdAndUpdate(moduleId, updates);
             results.applied = true;
         } else {

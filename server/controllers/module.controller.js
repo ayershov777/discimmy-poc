@@ -146,6 +146,41 @@ const checkRedundantPrerequisites = (graph) => {
     return false;
 };
 
+// Helper function to validate module content
+const validateModuleContent = (content) => {
+    // Validate content is an array of segments
+    if (!Array.isArray(content)) {
+        return {
+            valid: false,
+            message: 'Content must be an array of segments'
+        };
+    }
+
+    // If content array is empty, it's valid
+    if (content.length === 0) {
+        return { valid: true };
+    }
+
+    // Validate each segment in the content array
+    for (const segment of content) {
+        if (!segment.type || !segment.title || !segment.content) {
+            return {
+                valid: false,
+                message: 'Each segment must have type, title, and content properties'
+            };
+        }
+
+        if (!['article', 'research', 'exercise', 'session', 'project', 'integration'].includes(segment.type)) {
+            return {
+                valid: false,
+                message: 'Invalid segment type. Must be one of: article, research, exercise, session, project, integration'
+            };
+        }
+    }
+
+    return { valid: true };
+};
+
 // Get all modules for a specific pathway
 exports.getModulesByPathway = async (req, res) => {
     try {
@@ -190,6 +225,12 @@ exports.createModule = async (req, res) => {
         // Validate required fields
         if (!name || !key || !pathwayId) {
             return res.status(400).json({ message: 'Name, key, and pathwayId are required' });
+        }
+
+        // Validate content format
+        const contentValidation = validateModuleContent(content);
+        if (!contentValidation.valid) {
+            return res.status(400).json({ message: contentValidation.message });
         }
 
         // Find pathway and check ownership
@@ -270,7 +311,7 @@ exports.createModule = async (req, res) => {
             pathway: pathwayId,
             prerequisites: prerequisites || [],
             concepts: concepts || [],
-            content: content || ''
+            content: content || []
         });
 
         await newModule.save({ session });
@@ -328,6 +369,16 @@ exports.createModulesBatch = async (req, res) => {
                 return res.status(400).json({
                     message: 'All modules must have a name and key'
                 });
+            }
+
+            // Validate content if present
+            if (module.content) {
+                const contentValidation = validateModuleContent(module.content);
+                if (!contentValidation.valid) {
+                    return res.status(400).json({
+                        message: `Module '${module.name}': ${contentValidation.message}`
+                    });
+                }
             }
         }
 
@@ -458,7 +509,7 @@ exports.createModulesBatch = async (req, res) => {
                 pathway: pathwayId,
                 prerequisites: moduleData.prerequisites || [],
                 concepts: moduleData.concepts || [],
-                content: moduleData.content || ''
+                content: moduleData.content || []
             });
 
             await newModule.save({ session });
@@ -522,6 +573,14 @@ exports.updateModule = async (req, res) => {
             return res.status(400).json({
                 message: 'Module keys cannot be updated. Create a new module if you need to change the key.'
             });
+        }
+
+        // Validate content format if provided
+        if (content !== undefined) {
+            const contentValidation = validateModuleContent(content);
+            if (!contentValidation.valid) {
+                return res.status(400).json({ message: contentValidation.message });
+            }
         }
 
         // Check if updated name conflicts with another module in the same pathway
@@ -614,7 +673,7 @@ exports.updateModule = async (req, res) => {
         // Update the module
         const updatedModule = await Module.findByIdAndUpdate(
             moduleId,
-            { 
+            {
                 name: name !== undefined ? name : module.name,
                 description: description !== undefined ? description : module.description,
                 prerequisites: prerequisites !== undefined ? prerequisites : module.prerequisites,

@@ -1,5 +1,26 @@
 const mongoose = require('mongoose');
 
+// Define the segment schema
+const SegmentSchema = new mongoose.Schema({
+    type: {
+        type: String,
+        required: true,
+        enum: ['article', 'research', 'exercise', 'session', 'project', 'integration']
+    },
+    title: {
+        type: String,
+        required: true
+    },
+    content: {
+        type: String,
+        required: true
+    },
+    section: {
+        type: String,
+        required: false
+    }
+});
+
 const ModuleSchema = new mongoose.Schema({
     name: {
         type: String,
@@ -22,14 +43,14 @@ const ModuleSchema = new mongoose.Schema({
         required: true,
     },
     prerequisites: [[{
-        type: String, // Changed to store module keys
+        type: String, // Module keys
     }]],
     concepts: [{
         type: String,
     }],
     content: {
-        type: String,
-        default: '',
+        type: [SegmentSchema],
+        default: [],
     },
 });
 

@@ -89,9 +89,39 @@ const AIGeneration = ({
             let response;
 
             if (type === 'pathway') {
-                response = await ApiService.generatePathwayProperties(id, selectedOptions, autoApply);
+                // For new pathways, include the current form data in the request
+                if (id === 'new') {
+                    response = await ApiService.generatePathwayProperties(
+                        id,
+                        selectedOptions,
+                        autoApply,
+                        initialData // Pass the current form data for context
+                    );
+                } else {
+                    response = await ApiService.generatePathwayProperties(
+                        id,
+                        selectedOptions,
+                        autoApply
+                    );
+                }
             } else if (type === 'module') {
-                response = await ApiService.generateModuleProperties(id, selectedOptions, autoApply);
+                // For new modules, include the current form data in the request
+                if (id === 'new') {
+                    response = await ApiService.generateModuleProperties(
+                        id,
+                        selectedOptions,
+                        autoApply,
+                        initialData, // Pass the current form data for context
+                        pathwayData
+                    );
+                } else {
+                    response = await ApiService.generateModuleProperties(
+                        id,
+                        selectedOptions,
+                        autoApply,
+                        pathwayData
+                    );
+                }
             }
 
             setGeneratedContent(response.results);

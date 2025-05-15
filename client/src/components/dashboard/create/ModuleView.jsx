@@ -1,3 +1,4 @@
+// Import statements - add our new ModuleContentEditor
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import AuthContext from '../../../context/AuthContext';
@@ -45,6 +46,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 import AIGeneration from '../../common/AIGeneration';
 import ModuleContentRenderer from '../../common/ModuleContentRenderer';
+import ModuleContentEditor from '../../common/ModuleContentEditor';
 
 // Helper component for Markdown content
 const MarkdownContent = ({ content }) => {
@@ -94,8 +96,43 @@ const ModuleView = () => {
         description: '',
         prerequisites: [[]],
         concepts: [],
-        content: ''
+        content: []
     });
+
+    // Helper function to parse content from various formats
+    const parseContent = (contentData) => {
+        if (!contentData) return [];
+        
+        if (Array.isArray(contentData)) {
+            return contentData;
+        }
+        
+        // Try to parse JSON string
+        if (typeof contentData === 'string') {
+            try {
+                const parsed = JSON.parse(contentData);
+                if (Array.isArray(parsed)) {
+                    return parsed;
+                }
+            } catch (e) {
+                // If parsing fails, create a single article segment with the content
+                return [{
+                    type: 'article',
+                    title: 'Converted Content',
+                    content: contentData,
+                    section: 'Content'
+                }];
+            }
+        }
+        
+        // If it's an object with results.content
+        if (contentData && typeof contentData === 'object' && contentData.results && Array.isArray(contentData.results.content)) {
+            return contentData.results.content;
+        }
+        
+        // Default to empty array
+        return [];
+    };
 
     // Fetch pathway data and module if not creating new
     useEffect(() => {
@@ -121,6 +158,9 @@ const ModuleView = () => {
                     const moduleRes = await axios.get(`${import.meta.env.VITE_API_URL}/modules/${id}`);
                     setModule(moduleRes.data);
 
+                    // Parse content into segments array
+                    const parsedContent = parseContent(moduleRes.data.content);
+
                     // Initialize form data
                     setFormData({
                         name: moduleRes.data.name || '',
@@ -128,7 +168,7 @@ const ModuleView = () => {
                         description: moduleRes.data.description || '',
                         prerequisites: moduleRes.data.prerequisites || [[]],
                         concepts: moduleRes.data.concepts || [],
-                        content: moduleRes.data.content || ''
+                        content: parsedContent
                     });
                 } else {
                     // Initialize form data for new module
@@ -138,7 +178,7 @@ const ModuleView = () => {
                         description: '',
                         prerequisites: [[]],
                         concepts: [],
-                        content: ''
+                        content: []
                     });
                 }
 
@@ -156,53 +196,17 @@ const ModuleView = () => {
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-
-        // Special handling for content field
-        if (name === 'content') {
-            // Check if current content is in segmented format
-            let isSegmented = false;
-            let segmentedContent = null;
-
-            try {
-                // Check if current content is segmented
-                if (typeof formData.content === 'object') {
-                    if (Array.isArray(formData.content)) {
-                        isSegmented = true;
-                        segmentedContent = formData.content;
-                    } else if (formData.content && formData.content.results && Array.isArray(formData.content.results.content)) {
-                        isSegmented = true;
-                        segmentedContent = formData.content.results.content;
-                    }
-                } else if (typeof formData.content === 'string') {
-                    try {
-                        const parsed = JSON.parse(formData.content);
-                        if (Array.isArray(parsed)) {
-                            isSegmented = true;
-                            segmentedContent = parsed;
-                        } else if (parsed && parsed.results && Array.isArray(parsed.results.content)) {
-                            isSegmented = true;
-                            segmentedContent = parsed.results.content;
-                        }
-                    } catch (parseError) {
-                        // Not JSON, treat as regular Markdown content
-                        isSegmented = false;
-                    }
-                }
-
-                // If it's segmented content, keep it as is instead of updating
-                if (isSegmented) {
-                    console.log('Segmented content detected, not updating via text field');
-                    return; // Exit without updating
-                }
-            } catch (error) {
-                console.error('Error checking content format:', error);
-            }
-        }
-
-        // For all fields (including non-segmented content)
         setFormData({
             ...formData,
             [name]: value
+        });
+    };
+
+    // Handle content change from ModuleContentEditor
+    const handleContentChange = (newContent) => {
+        setFormData({
+            ...formData,
+            content: newContent
         });
     };
 
@@ -282,31 +286,14 @@ const ModuleView = () => {
                 return;
             }
 
-            // Process the content field to ensure proper serialization
-            let processedContent = formData.content;
-
-            // Check if content is an object that needs to be stringified
-            if (typeof formData.content === 'object' && formData.content !== null) {
-                try {
-                    // Convert the content object to a string using JSON.stringify
-                    // This ensures proper escaping of special characters
-                    processedContent = JSON.stringify(formData.content);
-                } catch (e) {
-                    console.error('Error stringifying content:', e);
-                    setError('Error processing module content. Please try again.');
-                    setLoading(false);
-                    return;
-                }
-            }
-
-            // Create the module data with the processed content
+            // Create the module data
             const moduleData = {
                 name: formData.name,
                 key: formData.key,
                 description: formData.description,
                 prerequisites: formData.prerequisites,
                 concepts: formData.concepts,
-                content: processedContent, // Use the processed content
+                content: formData.content, // Now sending array directly
                 pathwayId
             };
 
@@ -353,6 +340,24 @@ const ModuleView = () => {
             setError(err.response?.data?.message || 'Failed to delete module. Please try again.');
             setLoading(false);
         }
+    };
+
+    // Handle AI generation results
+    const handleAIGenerationResults = (newData) => {
+        const updatedFormData = { ...formData };
+        
+        Object.keys(newData).forEach(key => {
+            if (key !== 'applied' && newData[key]) {
+                if (key === 'content') {
+                    // Parse content from AI generation
+                    updatedFormData[key] = parseContent(newData[key]);
+                } else {
+                    updatedFormData[key] = newData[key];
+                }
+            }
+        });
+        
+        setFormData(updatedFormData);
     };
 
     // Render loading state
@@ -465,15 +470,7 @@ const ModuleView = () => {
                                         initialData={formData}
                                         pathwayData={pathway}
                                         availableOptions={['name', 'description', 'concepts', 'prerequisites', 'content']}
-                                        onGenerated={(newData) => {
-                                            const updatedFormData = { ...formData };
-                                            Object.keys(newData).forEach(key => {
-                                                if (key !== 'applied' && newData[key]) {
-                                                    updatedFormData[key] = newData[key];
-                                                }
-                                            });
-                                            setFormData(updatedFormData);
-                                        }}
+                                        onGenerated={handleAIGenerationResults}
                                         buttonVariant="outlined"
                                         buttonSize="medium"
                                         buttonText="Enhance with AI"
@@ -690,124 +687,16 @@ const ModuleView = () => {
                             }
                         />
 
-                        {/* Content - Markdown Editor */}
+                        {/* Content Editor - Use ModuleContentEditor component */}
                         <Box>
                             <Typography variant="subtitle1" gutterBottom>
-                                Content (Markdown)
+                                Content
                             </Typography>
-
-                            {(() => {
-                                let isSegmented = false;
-                                let segmentedContent = null;
-
-                                // Try to determine if the content is segmented
-                                try {
-                                    if (typeof formData.content === 'string') {
-                                        // Try to parse as JSON
-                                        const parsed = JSON.parse(formData.content);
-                                        if (Array.isArray(parsed)) {
-                                            isSegmented = true;
-                                            segmentedContent = parsed;
-                                        } else if (parsed && parsed.results && Array.isArray(parsed.results.content)) {
-                                            isSegmented = true;
-                                            segmentedContent = parsed.results.content;
-                                        }
-                                    } else if (formData.content && typeof formData.content === 'object') {
-                                        if (Array.isArray(formData.content)) {
-                                            isSegmented = true;
-                                            segmentedContent = formData.content;
-                                        } else if (formData.content.results && Array.isArray(formData.content.results.content)) {
-                                            isSegmented = true;
-                                            segmentedContent = formData.content.results.content;
-                                        }
-                                    }
-                                } catch (e) {
-                                    console.error('Error parsing content:', e);
-                                }
-
-                                if (isSegmented) {
-                                    // For segmented content, show a read-only view with a warning
-                                    return (
-                                        <Box>
-                                            <Alert severity="info" sx={{ mb: 2 }}>
-                                                This module uses segmented content format which can't be directly edited.
-                                                You can view the segments below. To modify the content, use the "Enhance with AI"
-                                                button or create a new module.
-                                            </Alert>
-
-                                            <Paper
-                                                variant="outlined"
-                                                sx={{
-                                                    p: 2,
-                                                    maxHeight: '400px',
-                                                    overflowY: 'auto',
-                                                    backgroundColor: 'rgba(0,0,0,0.03)'
-                                                }}
-                                            >
-                                                <Typography variant="subtitle2" gutterBottom>
-                                                    {segmentedContent.length} Content Segments
-                                                </Typography>
-
-                                                {segmentedContent.map((segment, index) => (
-                                                    <Box
-                                                        key={index}
-                                                        sx={{
-                                                            mb: 1,
-                                                            p: 1,
-                                                            borderBottom: '1px solid rgba(0,0,0,0.1)',
-                                                            backgroundColor: 'white',
-                                                            borderRadius: 1
-                                                        }}
-                                                    >
-                                                        <Typography variant="body2" fontWeight="bold">
-                                                            {index + 1}. {segment.title} <Chip label={segment.type} size="small" />
-                                                            {segment.section && (
-                                                                <Typography
-                                                                    component="span"
-                                                                    variant="body2"
-                                                                    sx={{ ml: 1, color: 'text.secondary' }}
-                                                                >
-                                                                    Section: {segment.section}
-                                                                </Typography>
-                                                            )}
-                                                        </Typography>
-
-                                                        <Typography
-                                                            variant="body2"
-                                                            sx={{
-                                                                mt: 1,
-                                                                color: 'text.secondary',
-                                                                fontStyle: 'italic'
-                                                            }}
-                                                        >
-                                                            Markdown content: {segment.content ? segment.content.length : 0} characters
-                                                        </Typography>
-                                                    </Box>
-                                                ))}
-                                            </Paper>
-                                        </Box>
-                                    );
-                                } else {
-                                    // For traditional content, show the original TextField
-                                    return (
-                                        <TextField
-                                            name="content"
-                                            value={typeof formData.content === 'string' ? formData.content :
-                                                JSON.stringify(formData.content, null, 2)}
-                                            onChange={handleInputChange}
-                                            fullWidth
-                                            multiline
-                                            rows={10}
-                                            placeholder="Enter Markdown content here"
-                                            sx={{ fontFamily: 'monospace' }}
-                                        />
-                                    );
-                                }
-                            })()}
-
-                            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                                Markdown editor for module content - supports headings, lists, links, code blocks, etc.
-                            </Typography>
+                            
+                            <ModuleContentEditor 
+                                value={formData.content} 
+                                onChange={handleContentChange} 
+                            />
                         </Box>
                     </Stack>
                 </Box>
@@ -893,7 +782,7 @@ const ModuleView = () => {
                     <Paper elevation={1} sx={{ p: 3, mb: 3 }}>
                         <Typography variant="h6" gutterBottom>Content</Typography>
 
-                        {!module.content ? (
+                        {!module.content || (Array.isArray(module.content) && module.content.length === 0) ? (
                             <Typography variant="body2" color="text.secondary">
                                 No content available
                             </Typography>

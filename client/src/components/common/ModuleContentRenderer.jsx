@@ -32,75 +32,80 @@ const segmentIcons = {
 };
 
 const ModuleContentRenderer = ({ content, loading = false }) => {
-    const [parsedContent, setParsedContent] = useState([]);
+    const [segments, setSegments] = useState([]);
     const [sections, setSections] = useState([]);
     const [expanded, setExpanded] = useState(false);
 
     useEffect(() => {
         if (loading || !content) {
-            setParsedContent([]);
+            setSegments([]);
             setSections([]);
             return;
         }
 
-        // Helper function to extract segments from the content
-        const extractSegments = (inputContent) => {
-            console.log('Extracting segments from content type:', typeof inputContent);
+        // Helper function to ensure we have a valid array of segments
+        const normalizeContent = (inputContent) => {
+            // If content is already an array, use it directly
+            if (Array.isArray(inputContent)) {
+                return inputContent;
+            }
 
-            // Case 1: If content is a string, try to parse it as JSON
+            // If content is a string, try to parse it as JSON
             if (typeof inputContent === 'string') {
                 try {
-                    const parsedJson = JSON.parse(inputContent);
-                    return extractSegments(parsedJson);
-                } catch (e) {
-                    console.error('Error parsing content as JSON:', e);
-                    return [];
-                }
-            }
-
-            // Case 2: If content is the API response object with results.content structure
-            if (typeof inputContent === 'object' && inputContent !== null) {
-                // If it has a results.content property (API response format)
-                if (inputContent.results && Array.isArray(inputContent.results.content)) {
-                    return inputContent.results.content;
-                }
-
-                // If it's already an array of segment objects
-                if (Array.isArray(inputContent)) {
-                    return inputContent;
-                }
-
-                // If it's some other object structure with content property
-                if (inputContent.content) {
-                    if (Array.isArray(inputContent.content)) {
-                        return inputContent.content;
+                    const parsed = JSON.parse(inputContent);
+                    if (Array.isArray(parsed)) {
+                        return parsed;
                     }
-                    return extractSegments(inputContent.content);
+                } catch (e) {
+                    console.warn('Content is not valid JSON:', e);
                 }
             }
 
-            // Default case: couldn't extract segments
-            console.warn('Could not extract segments from content:', inputContent);
+            // Return empty array for invalid content
             return [];
         };
 
-        // Extract segments from content
-        const segments = extractSegments(content);
-        console.log('Extracted segments:', segments);
-
-        setParsedContent(segments);
+        // Get normalized segments
+        const normalizedSegments = normalizeContent(content);
+        setSegments(normalizedSegments);
 
         // Extract unique sections for grouping
         const uniqueSections = Array.from(
-            new Set(segments.map(segment => segment.section || 'Content'))
+            new Set(normalizedSegments.map(segment => segment.section || 'Content'))
         );
         setSections(uniqueSections);
 
         // Set first segment as expanded by default
-        if (segments.length > 0 && !expanded) {
+        if (normalizedSegments.length > 0 && !expanded) {
             setExpanded(`segment-0-0`);
         }
-    }, [content, loading]);
+    }, [content, loading, expanded]);
+
+    // Helper function to ensure content is a string
+    const ensureString = (content) => {
+        if (typeof content === 'string') {
+            return content;
+        }
+
+        // If content is an array, join with newlines
+        if (Array.isArray(content)) {
+            return content.join('\n\n');
+        }
+
+        // If content is an object, convert to JSON string
+        if (typeof content === 'object' && content !== null) {
+            try {
+                return JSON.stringify(content, null, 2);
+            } catch (e) {
+                console.error('Failed to stringify object content:', e);
+                return 'Error: Failed to render content';
+            }
+        }
+
+        // For other types, convert to string
+        return String(content || '');
+    };
 
     const handleAccordionChange = (panel) => (event, isExpanded) => {
         setExpanded(isExpanded ? panel : false);
@@ -116,7 +121,7 @@ const ModuleContentRenderer = ({ content, loading = false }) => {
     }
 
     // Render content frame if no content
-    if (!content || parsedContent.length === 0) {
+    if (!content || segments.length === 0) {
         return (
             <Paper elevation={0} sx={{ p: 3, mt: 2, borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
                 <Typography variant="body1" color="text.secondary" textAlign="center">
@@ -137,10 +142,14 @@ const ModuleContentRenderer = ({ content, loading = false }) => {
                         </Typography>
                     )}
 
-                    {parsedContent
+                    {segments
                         .filter(segment => (segment.section || 'Content') === section)
                         .map((segment, segmentIndex) => {
                             const segmentId = `segment-${sectionIndex}-${segmentIndex}`;
+
+                            // Ensure segment content is a string
+                            const segmentContent = ensureString(segment.content);
+
                             return (
                                 <Accordion
                                     key={segmentId}
@@ -236,7 +245,7 @@ const ModuleContentRenderer = ({ content, loading = false }) => {
                                                 }}
                                             >
                                                 <ReactMarkdown>
-                                                    {segment.content}
+                                                    {segmentContent}
                                                 </ReactMarkdown>
                                             </Box>
                                         </Box>

@@ -98,7 +98,7 @@ class GeminiService {
         The goal should be 1 sentence clearly defining what learners will be able to do
         after completing the pathway. Use markdown format.
         
-        Respond with only the goal statement, no additional explanation. Start with the word "To".
+        Respond with only the goal statement, no additional explanation. Start with the word "To" (capitalized).
         `;
 
         return this.generateContent(prompt);
@@ -136,7 +136,7 @@ class GeminiService {
         The target audience description should be concise but specific about who would benefit most
         from this pathway.
         
-        Respond with only the target audience description, no additional explanation.
+        Respond with a single sentence expressing the target audience description, with no additional explanation.
         `;
 
         return this.generateContent(prompt);
@@ -262,169 +262,92 @@ class GeminiService {
     async generateModuleContent(module, pathway) {
         const prereqsArray = module.prerequisites || [[]];
         const prereqsString = JSON.stringify(prereqsArray);
-
+    
         const conceptsArray = module.concepts || [];
         const conceptsString = conceptsArray.map((concept, index) => `${index + 1}. ${concept}`).join('\n');
-
+    
         const prompt = `
-**Objective:** Create a structured learning module focused on ${module.name || 'this topic'}, designed for ${pathway.targetAudience || 'learners'}.
-
-**Core Concepts to Cover:**
-Organize the module around the following core concepts, provided in a logical sequence:
-${conceptsString}
-
-**Context within Learning Pathway:**
-* **Prerequisite Knowledge:** Assumes completion of the following prerequisite modules and understanding of their associated concepts. Include a brief activation of prior knowledge related to these concepts in the Warmup segment(s).
-    * Prerequisites: ${prereqsString}
-
-* **Leads To:** This module serves as a prerequisite for future modules.
-
-**Module Presentation Structure:**
-* **Information Architecture:** Structure the module logically by concept using sequentially numbered sections. Use top-level headings (##) for major concepts or sections. Use lower-level headings (###, ####) for individual segments within those sections.
-* **Segment Types:** Break the module content into distinct segments using the following types: article, research, exercise, session, project. Each segment should be structured as a separate object in the JSON array.
-
-**Segment Content & Instructions:**
-
-* **Warmup Segment(s):**
-    * Start the module with one or more introductory segments designated for warmup.
-    * Purpose: Activate relevant prior knowledge from the listed prerequisite concepts, establish context for the new module, and prime for new learning.
-    * Components: Keep brief. Include relevance framing (why this topic matters), prior knowledge activation (e.g., self-assessment questions related to prerequisite concepts), and curiosity stimulation (e.g., engaging question/problem related to the module topic).
-* **research Segments:**
-    * Purpose: Introduce new concepts through guided investigation.
-    * This is the primary segment for knowledge transfer and should be used for most of the module's content.
-    * Provide specific questions or tasks for students to investigate related to the concept being introduced.
-    * Provide direct hyperlinks to specific pages within reliable online resources that help answer the research questions. Ensure links are properly formatted in Markdown.
-    * Clearly state the expected outcome (e.g., understanding required, notes to take, summary to write).
-* **article Segments:**
-    * Purpose: Introduce concepts or provide concise summaries/checkpoints.
-    * Use for brief introductions to set the stage or as checkpoints after research/application segments to summarize key takeaways.
-* **exercise Segments:**
-    * Purpose: Allow learners to practice and apply concepts actively.
-    * Provide practical, hands-on tasks relevant to the module's concepts, with clear instructions and expected outcomes.
-    * Place these after relevant research/article segments and before any corresponding Learner Focus session.
-    * **IMPORTANT:** Ensure instructions explicitly state that learners should use placeholder or fictional information where personal details might otherwise be requested. Avoid deliverables requiring users to expose personal information in general, even if it's fictional.
-* **integration Segments:**
-    * Purpose: Connect knowledge across different concepts within the module.
-    * Include *at least two* distinct integration segments (e.g., exercises or mini-projects) of graduating complexity after several core concepts have been introduced and applied, but before the final consolidation section. These should require learners to synthesize multiple concepts or apply them in broader scenarios relevant to the module's domain.
-* **session Segments (Peer Mentoring):**
-    * **Learner Focus Sessions:**
-        * **Placement:** Include Learner Focus session segments immediately after relevant application exercises throughout the module where feedback would be beneficial.
-        * **Function:** Define concrete, actionable tasks driven by the Learner's needs for the specific concept or exercise review.
-        * **Waiting Instruction:** Include clear instructions for the learner while waiting for a peer match.
-    * **Mentor Focus Sessions:**
-        * **Placement:** Generate these segments ONLY within the final Consolidation Section, *before* the project segment. Ensure the number matches the number of Learner Focus sessions.
-        * **Function:** These sessions fulfill the reciprocal participation requirement. Each session focuses on a single, specific key concept.
-    * **Project Presentation Sessions:**
-        * **Placement:** Generate this segment once after the final project.
-        * **Function:** This session focuses on the project segment. The student reviews their project with a peer, discusses challenges, and shares reflections on the project.
-* **Consolidation Section:** Include a final major section dedicated to consolidation. This section should contain the Mentor Focus Sessions first, followed by the Project Segment, and then the final Project-related Learner Focus Session (if included).
-* **project Segment:**
-    * Purpose: Synthesize module concepts in a significant application task.
-    * Include one final project segment. Make this section detailed and clearly structured for the learner.
-    * Define core requirements for the final project artifact clearly.
-    * **IMPORTANT:** Reiterate that placeholder or fictional information should be used instead of personal details.
-
-**Output Format and JSON Escaping Requirements:**
-* The structure should be an array of segment objects:
-[
-  {
-    "type": "string", // one of: article, research, exercise, session, project, integration
-    "title": "string", // the title of the segment
-    "content": "string", // Markdown content of the segment (properly escaped for JSON)
-    "section": "string" // optional: the section this segment belongs to (e.g., "Introduction", "Consolidation")
-  }
-]
-
-**EXTREMELY IMPORTANT - JSON STRING ESCAPING:**
-1. All special characters in the content field MUST be escaped properly for JSON strings:
-   - Single quotes/apostrophes (') do NOT need escaping in JSON (just use them as-is)
-   - Double quotes (") MUST be escaped with a backslash: \\"
-   - Backslashes (\\) MUST be escaped: \\\\
-   - Newlines MUST be escaped as: \\n
-   - Tabs MUST be escaped as: \\t
-   - Carriage returns MUST be escaped as: \\r
-
-2. DO NOT include actual newlines within the content string - use \\n instead.
-3. DO NOT include unescaped backslashes within the content string - use \\\\ instead.
-4. ALWAYS double-check that your output is valid JSON by ensuring all quotes, backslashes, and newlines are properly escaped.
-
-This is ABSOLUTELY CRITICAL for the module content to be processed correctly. Improper escaping will cause JSON parsing to fail and the entire content will be rejected.
-
-Example of proper escaping:
-"content": "## Main Title\\n\\nThis is a paragraph with \\"quoted text\\" and apostrophes don't need escaping.\\n\\n* Bullet point 1\\n* Bullet point 2"
-
-Use standard Markdown syntax for the content field, but remember to escape all special characters as described above.
-`;
-
+    **Objective:** Create a structured learning module focused on ${module.name || 'this topic'}, designed for ${pathway.targetAudience || 'learners'}.
+    
+    **Core Concepts to Cover:**
+    Organize the module around the following core concepts, provided in a logical sequence:
+    ${conceptsString}
+    
+    **Context within Learning Pathway:**
+    * **Prerequisite Knowledge:** Assumes completion of the following prerequisite modules and understanding of their associated concepts. Include a brief activation of prior knowledge related to these concepts in the Warmup segment(s).
+        * Prerequisites: ${prereqsString}
+    
+    * **Leads To:** This module serves as a prerequisite for future modules.
+    
+    **Module Presentation Structure:**
+    * **Information Architecture:** Structure the module logically by concept using sequentially numbered sections. Use top-level headings (##) for major concepts or sections. Use lower-level headings (###, ####) for individual segments within those sections.
+    * **Segment Types:** Break the module content into distinct segments using the following types: article, research, exercise, session, project. Each segment should be structured as a separate object in the JSON array.
+    
+    **Segment Content & Instructions:**
+    
+    * **Warmup Segment(s):**
+        * Start the module with one or more introductory segments designated for warmup.
+        * Purpose: Activate relevant prior knowledge from the listed prerequisite concepts, establish context for the new module, and prime for new learning.
+        * Components: Keep brief. Include relevance framing (why this topic matters), prior knowledge activation (e.g., self-assessment questions related to prerequisite concepts), and curiosity stimulation (e.g., engaging question/problem related to the module topic).
+    * **research Segments:**
+        * Purpose: Introduce new concepts through guided investigation.
+        * This is the primary segment for knowledge transfer and should be used for most of the module's content.
+        * Provide specific questions or tasks for students to investigate related to the concept being introduced.
+        * Provide direct hyperlinks to specific pages within reliable online resources that help answer the research questions. Ensure links are properly formatted in Markdown.
+        * Clearly state the expected outcome (e.g., understanding required, notes to take, summary to write).
+    * **article Segments:**
+        * Purpose: Introduce concepts or provide concise summaries/checkpoints.
+        * Use for brief introductions to set the stage or as checkpoints after research/application segments to summarize key takeaways.
+    * **exercise Segments:**
+        * Purpose: Allow learners to practice and apply concepts actively.
+        * Provide practical, hands-on tasks relevant to the module's concepts, with clear instructions and expected outcomes.
+        * Place these after relevant research/article segments and before any corresponding Learner Focus session.
+        * **IMPORTANT:** Ensure instructions explicitly state that learners should use placeholder or fictional information where personal details might otherwise be requested. Avoid deliverables requiring users to expose personal information in general, even if it's fictional.
+    * **integration Segments:**
+        * Purpose: Connect knowledge across different concepts within the module.
+        * Include *at least two* distinct integration segments (e.g., exercises or mini-projects) of graduating complexity after several core concepts have been introduced and applied, but before the final consolidation section. These should require learners to synthesize multiple concepts or apply them in broader scenarios relevant to the module's domain.
+    * **session Segments (Peer Mentoring):**
+        * **Learner Focus Sessions:**
+            * **Placement:** Include Learner Focus session segments immediately after relevant application exercises throughout the module where feedback would be beneficial.
+            * **Function:** Define concrete, actionable tasks driven by the Learner's needs for the specific concept or exercise review.
+            * **Waiting Instruction:** Include clear instructions for the learner while waiting for a peer match.
+        * **Mentor Focus Sessions:**
+            * **Placement:** Generate these segments ONLY within the final Consolidation Section, *before* the project segment. Ensure the number matches the number of Learner Focus sessions.
+            * **Function:** These sessions fulfill the reciprocal participation requirement. Each session focuses on a single, specific key concept.
+        * **Project Presentation Sessions:**
+            * **Placement:** Generate this segment once after the final project.
+            * **Function:** This session focuses on the project segment. The student reviews their project with a peer, discusses challenges, and shares reflections on the project.
+    * **Consolidation Section:** Include a final major section dedicated to consolidation. This section should contain the Mentor Focus Sessions first, followed by the Project Segment, and then the final Project-related Learner Focus Session (if included).
+    * **project Segment:**
+        * Purpose: Synthesize module concepts in a significant application task.
+        * Include one final project segment. Make this section detailed and clearly structured for the learner.
+        * Define core requirements for the final project artifact clearly.
+        * **IMPORTANT:** Reiterate that placeholder or fictional information should be used instead of personal details.
+    
+    **Output Format Requirements:**
+    * The structure should be an array of segment objects:
+    [
+      {
+        "type": "string", // one of: article, research, exercise, session, project, integration
+        "title": "string", // the title of the segment
+        "content": "string", // Markdown content of the segment
+        "section": "string" // optional: the section this segment belongs to (e.g., "Introduction", "Consolidation")
+      }
+    ]
+    
+    Important: Your output must be valid JSON that can be directly parsed. Do not include markdown code blocks or any explanation text - just return the JSON array.
+    `;
+    
         const response = await this.generateContent(prompt);
-
-        // Always try to extract JSON from the response, assuming it might be wrapped in code blocks
-        const extractJsonFromResponse = (text) => {
-            console.log('Extracting JSON from response...');
-
-            // Try to extract from code blocks first
-            const codeBlockRegex = /```(?:json)?\s*([\s\S]*?)\s*```/;
-            const codeBlockMatch = text.match(codeBlockRegex);
-
-            if (codeBlockMatch && codeBlockMatch[1]) {
-                console.log('Found code block, extracting JSON...');
-                const jsonContent = codeBlockMatch[1].trim();
-                return jsonContent;
-            }
-
-            // If no code block found, try to find array-like content
-            const arrayRegex = /(\[\s*\{[\s\S]*\}\s*\])/;
-            const arrayMatch = text.match(arrayRegex);
-
-            if (arrayMatch && arrayMatch[1]) {
-                console.log('Found array-like content, extracting...');
-                return arrayMatch[1].trim();
-            }
-
-            // If nothing found, return the original text (it might be valid JSON already)
-            console.log('No JSON structure found, returning original text');
-            return text;
-        };
-
-        // Add extra JSON validation
-        const validateAndRepairJson = (jsonString) => {
-            try {
-                // First try direct parsing
-                return JSON.parse(jsonString);
-            } catch (parseError) {
-                console.log('Initial JSON parsing failed, attempting repair');
-
-                // Common JSON escaping issues to fix
-                let repairedString = jsonString;
-
-                // Replace actual newlines within JSON strings with \n
-                repairedString = repairedString.replace(/([^\\])"\s*:\s*"(.*?)([^\\])\n/gs, '$1": "$2$3\\n');
-
-                // Escape unescaped double quotes within JSON strings
-                repairedString = repairedString.replace(/([^\\])"/g, '$1\\"');
-
-                // Fix double-escaped quotes
-                repairedString = repairedString.replace(/\\\\"/g, '\\"');
-
-                // Restore the opening/closing quotes of JSON properties and values
-                repairedString = repairedString.replace(/\\"/g, '"');
-
-                try {
-                    return JSON.parse(repairedString);
-                } catch (repairError) {
-                    throw new Error(`Failed to repair JSON: ${repairError.message}`);
-                }
-            }
-        };
-
+    
         try {
             // Extract the JSON content from the response
-            const extractedJson = extractJsonFromResponse(response);
+            const extractedJson = this.extractJsonFromResponse(response);
             console.log('Attempting to parse extracted content as JSON');
-
+        
             // Parse and validate the extracted content
-            const parsedContent = validateAndRepairJson(extractedJson);
-
+            const parsedContent = this.validateAndRepairJson(extractedJson);
+        
             // Validate the content structure
             if (Array.isArray(parsedContent) && parsedContent.length > 0) {
                 // Check if each item has required properties
@@ -435,10 +358,23 @@ Use standard Markdown syntax for the content field, but remember to escape all s
                     'title' in segment &&
                     'content' in segment
                 );
-
+        
                 if (isValid) {
                     console.log('Successfully parsed valid content structure');
-                    return parsedContent;
+                    
+                    // Ensure each segment's content is a string
+                    const normalizedContent = parsedContent.map(segment => ({
+                        ...segment,
+                        content: typeof segment.content === 'string' 
+                            ? segment.content 
+                            : Array.isArray(segment.content)
+                                ? segment.content.join('\n\n')
+                                : typeof segment.content === 'object'
+                                    ? JSON.stringify(segment.content, null, 2)
+                                    : String(segment.content || '')
+                    }));
+                    
+                    return normalizedContent;
                 } else {
                     throw new Error('Invalid segment structure in JSON array');
                 }
@@ -448,7 +384,7 @@ Use standard Markdown syntax for the content field, but remember to escape all s
         } catch (e) {
             console.error('Failed to parse module content:', e.message);
             console.error('Response excerpt:', response.substring(0, 500) + '...');
-
+    
             // Return a fallback segment
             const fallbackSegment = [{
                 type: "article",
@@ -456,7 +392,7 @@ Use standard Markdown syntax for the content field, but remember to escape all s
                 content: `## There was an error generating structured content\n\nThe system was unable to generate properly formatted content segments. \n\nPlease try again, or contact the administrator if the issue persists.\n\n---\n\n### Technical Details\n\nError: ${e.message}`,
                 section: "Content"
             }];
-
+    
             return fallbackSegment;
         }
     }
@@ -540,6 +476,63 @@ Use standard Markdown syntax for the content field, but remember to escape all s
 
             console.error('Failed to extract JSON from response:', e);
             throw new Error('Failed to parse pathway structure from Gemini response');
+        }
+    }
+
+    extractJsonFromResponse(text) {
+        console.log('Extracting JSON from response...');
+    
+        // Try to extract from code blocks first
+        const codeBlockRegex = /```(?:json)?\s*([\s\S]*?)\s*```/;
+        const codeBlockMatch = text.match(codeBlockRegex);
+    
+        if (codeBlockMatch && codeBlockMatch[1]) {
+            console.log('Found code block, extracting JSON...');
+            const jsonContent = codeBlockMatch[1].trim();
+            return jsonContent;
+        }
+    
+        // If no code block found, try to find array-like content
+        const arrayRegex = /(\[\s*\{[\s\S]*\}\s*\])/;
+        const arrayMatch = text.match(arrayRegex);
+    
+        if (arrayMatch && arrayMatch[1]) {
+            console.log('Found array-like content, extracting...');
+            return arrayMatch[1].trim();
+        }
+    
+        // If nothing found, return the original text (it might be valid JSON already)
+        console.log('No JSON structure found, returning original text');
+        return text;
+    }
+    
+    validateAndRepairJson(jsonString) {
+        try {
+            // First try direct parsing
+            return JSON.parse(jsonString);
+        } catch (parseError) {
+            console.log('Initial JSON parsing failed, attempting repair');
+    
+            // Common JSON escaping issues to fix
+            let repairedString = jsonString;
+    
+            // Replace actual newlines within JSON strings with \n
+            repairedString = repairedString.replace(/([^\\])"\s*:\s*"(.*?)([^\\])\n/gs, '$1": "$2$3\\n');
+    
+            // Escape unescaped double quotes within JSON strings
+            repairedString = repairedString.replace(/([^\\])"/g, '$1\\"');
+    
+            // Fix double-escaped quotes
+            repairedString = repairedString.replace(/\\\\"/g, '\\"');
+    
+            // Restore the opening/closing quotes of JSON properties and values
+            repairedString = repairedString.replace(/\\"/g, '"');
+    
+            try {
+                return JSON.parse(repairedString);
+            } catch (repairError) {
+                throw new Error(`Failed to repair JSON: ${repairError.message}`);
+            }
         }
     }
 }
